@@ -99,6 +99,20 @@ export function formatDateTime(value: string | null | undefined): string {
   return parsed.toISOString().replace('T', ' ').replace('.000Z', ' UTC').replace('Z', ' UTC');
 }
 
+/** Compact age of a timestamp: "just now", "12m ago", "5h ago", "3d ago"; "unknown" when absent. */
+export function formatAge(value: string | null | undefined, now: Date = new Date()): string {
+  if (!value) return 'unknown';
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return 'unknown';
+  const seconds = Math.max(0, Math.round((now.getTime() - parsed.getTime()) / 1000));
+  if (seconds < 60) return 'just now';
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  return `${Math.round(hours / 24)}d ago`;
+}
+
 export function scoreClass(category: string | null | undefined): string {
   switch (category) {
     case 'hot':

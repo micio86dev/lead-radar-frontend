@@ -224,6 +224,16 @@ const error = usage.error ?? actors.error ?? runs.error;
                 <td>{formatDateTime(run.started_at)}</td>
                 <td class="small">{run.error ?? '—'}</td>
                 <td>
+                  {run.dataset_id && (
+                    <form method="post" action="/api/action">
+                      <input type="hidden" name="op" value="apify.run.reingest" />
+                      <input type="hidden" name="id" value={run.id} />
+                      <input type="hidden" name="redirect" value={target} />
+                      <button type="submit" class="secondary">
+                        Re-ingest
+                      </button>
+                    </form>
+                  )}
                   {['queued', 'running'].includes(run.status) && (
                     <form method="post" action="/api/action">
                       <input type="hidden" name="op" value="apify.run.cancel" />

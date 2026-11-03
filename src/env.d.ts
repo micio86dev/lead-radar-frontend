@@ -7,6 +7,8 @@ interface ImportMetaEnv {
   readonly API_INTERNAL_URL?: string;
   /** Server-only bearer token. Never prefixed with PUBLIC_. */
   readonly LEAD_RADAR_API_TOKEN?: string;
+  /** Comma-separated extra origins allowed to post to the dashboard action endpoint. */
+  readonly LEAD_RADAR_ALLOWED_ORIGINS?: string;
 }
 
 interface ImportMeta {

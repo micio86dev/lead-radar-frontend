@@ -190,6 +190,12 @@ export interface ProviderStatus {
   last_request_at: string | null;
   last_latency_ms: number | null;
   last_error: string | null;
+  /** Timestamp of the most recent successful call, if any. */
+  last_success_at: string | null;
+  /** Timestamp of the most recent failed call, if any. */
+  last_error_at: string | null;
+  /** True when the last recorded outcome is a failure older than the staleness window. */
+  stale: boolean;
   usage: { requests: number; input_tokens: number; output_tokens: number };
   base_url: string | null;
 }
@@ -223,6 +229,7 @@ export interface Source {
   source_type: string;
   enabled: boolean;
   validation_status: string;
+  notes: string | null;
   config: Record<string, unknown>;
   last_run_at: string | null;
   created_at: string;

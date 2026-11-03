@@ -42,7 +42,7 @@ const { data, error } = await load(() => api.dashboard());
   {
     data && (
       <>
-        <section class="grid" aria-label="Opportunity totals">
+        <section class="grid grid--stats" aria-label="Opportunity totals">
           <div class="card">
             <p class="muted small">Opportunities</p>
             <p class="stat">{formatNumber(data.totals.opportunities)}</p>

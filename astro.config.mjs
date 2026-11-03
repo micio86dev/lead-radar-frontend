@@ -8,5 +8,10 @@ export default defineConfig({
   output: 'server',
   adapter: node({ mode: 'standalone' }),
   integrations: [vue()],
+  // Astro's blanket `checkOrigin` rejects every form POST that arrives without an Origin header,
+  // which also blocks curl/Postman and other non-browser clients. `/api/action` enforces an explicit
+  // policy instead: cross-site browser requests are refused, non-browser clients are allowed, and an
+  // Origin header, when present, must match this host (see src/pages/api/action.ts).
+  security: { checkOrigin: false },
   server: { host: true, port: Number(process.env.PORT ?? 4321) },
 });

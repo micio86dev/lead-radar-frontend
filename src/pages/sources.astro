@@ -84,6 +84,7 @@ const { data, error } = await load(() => api.sources());
                 </td>
                 <td>{source.enabled ? 'yes' : 'no'}</td>
                 <td>{formatDateTime(source.last_run_at)}</td>
+                <td class="small">{source.notes ?? '—'}</td>
                 <td>
                   <form method="post" action="/api/action">
                     <input type="hidden" name="op" value="source.patch" />

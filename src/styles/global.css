@@ -15,6 +15,13 @@
   --bad-bg: #fbe6e6;
   --focus: #0b57d0;
   --radius: 10px;
+  /* Vertical rhythm: one scale, used everywhere, so stacked panels never touch. */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
   color-scheme: light;
 }
 
@@ -26,6 +33,22 @@ html,
 body {
   margin: 0;
   padding: 0;
+}
+
+p,
+ul,
+ol,
+pre {
+  margin: 0 0 var(--space-3);
+}
+
+ul,
+ol {
+  padding-left: 1.2rem;
+}
+
+li + li {
+  margin-top: var(--space-1);
 }
 
 body {
@@ -81,7 +104,7 @@ a:hover {
   padding: 0.75rem 1rem;
   display: flex;
   flex-wrap: wrap;
-  gap: 0.75rem 1.5rem;
+  gap: 0.5rem 1.25rem;
   align-items: center;
   justify-content: space-between;
 }
@@ -101,7 +124,7 @@ a:hover {
 .nav {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.15rem 0.35rem;
+  gap: 0.1rem 0.15rem;
   padding: 0;
   margin: 0;
   list-style: none;
@@ -109,11 +132,12 @@ a:hover {
 
 .nav a {
   display: inline-block;
-  padding: 0.35rem 0.55rem;
+  padding: 0.3rem 0.45rem;
   border-radius: 7px;
   text-decoration: none;
   color: var(--text-muted);
-  font-size: 0.9rem;
+  font-size: 0.86rem;
+  white-space: nowrap;
 }
 
 .nav a[aria-current='page'],
@@ -131,10 +155,10 @@ main {
 .page-head {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.75rem;
+  gap: var(--space-3);
   justify-content: space-between;
   align-items: baseline;
-  margin-bottom: 1rem;
+  margin-bottom: var(--space-4);
 }
 
 h1 {
@@ -144,12 +168,17 @@ h1 {
 
 h2 {
   font-size: 1.15rem;
-  margin: 1.5rem 0 0.6rem;
+  margin: var(--space-5) 0 var(--space-3);
 }
 
 h3 {
   font-size: 1rem;
-  margin: 1rem 0 0.4rem;
+  margin: var(--space-4) 0 var(--space-2);
+}
+
+h2:first-child,
+h3:first-child {
+  margin-top: 0;
 }
 
 .muted {
@@ -162,19 +191,46 @@ h3 {
 
 .grid {
   display: grid;
-  gap: 1rem;
+  gap: var(--space-4);
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  margin: 0 0 var(--space-4);
 }
 
+/* Five counters: keep them on one row while there is room, then wrap in pairs. */
+.grid--stats {
+  grid-template-columns: repeat(auto-fit, minmax(185px, 1fr));
+}
+
+/* Panels keep a consistent gap in normal flow; inside a grid the gap already does the work. */
 .card {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 1rem;
+  padding: var(--space-4);
+  margin: 0 0 var(--space-4);
+}
+
+.card > :last-child,
+.card > :last-child > :last-child {
+  margin-bottom: 0;
+}
+
+.grid > .card,
+.grid > * {
+  margin: 0;
 }
 
 .card--tight {
-  padding: 0.75rem;
+  padding: var(--space-3);
+}
+
+/* Panels and tables that are siblings in normal flow. */
+section + section,
+article + article,
+section + table,
+.table-wrap + .table-wrap,
+details.card + .card {
+  margin-top: var(--space-4);
 }
 
 .stat {
@@ -196,6 +252,7 @@ table {
 .table-wrap {
   overflow-x: auto;
   border-radius: var(--radius);
+  margin: 0 0 var(--space-4);
 }
 
 th,
@@ -263,6 +320,22 @@ tbody tr:last-child td {
 
 form {
   margin: 0;
+}
+
+/* Stacked forms (action forms inside table cells, several forms in one panel). */
+form + form,
+form + p,
+p + form,
+form + .actions {
+  margin-top: var(--space-3);
+}
+
+td > form:first-child {
+  margin-top: 0;
+}
+
+td form label {
+  margin-top: var(--space-2);
 }
 
 fieldset {
@@ -358,14 +431,15 @@ button:disabled {
 .actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: var(--space-2);
   align-items: center;
+  margin: var(--space-3) 0;
 }
 
 .notice {
   border-radius: var(--radius);
   padding: 0.7rem 0.9rem;
-  margin-bottom: 1rem;
+  margin: 0 0 var(--space-4);
   border: 1px solid var(--border);
 }
 
@@ -407,9 +481,19 @@ pre {
 
 .kv {
   display: grid;
-  grid-template-columns: minmax(140px, 220px) 1fr;
+  grid-template-columns: minmax(110px, max-content) minmax(0, 1fr);
   gap: 0.35rem 1rem;
+  margin: 0 0 var(--space-4);
+}
+
+.kv dd {
   margin: 0;
+  /* Long URLs wrap; short values such as "25.00 EUR" stay on one line. */
+  overflow-wrap: break-word;
+}
+
+.kv:last-child {
+  margin-bottom: 0;
 }
 
 .kv dt {
@@ -440,5 +524,9 @@ pre {
   }
   h1 {
     font-size: 1.3rem;
+  }
+  :root {
+    --space-4: 0.85rem;
+    --space-5: 1.25rem;
   }
 }

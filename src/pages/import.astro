@@ -1,0 +1,73 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { formTarget } from '../lib/page';
+
+const target = formTarget(Astro.url);
+const example = `{
+  "source_name": "manual-import",
+  "posts": [
+    {
+      "external_id": "discussion-1",
+      "title": "Multilingual interviews block our hiring",
+      "content": "Our recruiting team cannot interview candidates who only speak Spanish. We need real-time translation in the interviews, any suggestions?",
+      "url": "https://example.invalid/discussion/1",
+      "author": "hiring-lead",
+      "community": "recruiting",
+      "language": "en",
+      "published_at": "2026-01-01T10:00:00Z",
+      "engagement": { "comments": 3, "upvotes": 7, "shares": 0 }
+    }
+  ]
+}`;
+---
+
+<Layout title="Import">
+  <div class="page-head">
+    <h1>Import conversations</h1>
+    <p class="muted small">
+      Manual JSON import works without Apify. Duplicates are detected by content hash and never
+      stored twice.
+    </p>
+  </div>
+
+  <p class="notice notice--info">
+    Importing only stores posts and queues the pipeline. A post that passes the keyword filter
+    reaches the structured decision provider, and <strong>that call is billed</strong>. Posts
+    filtered out cost nothing.
+  </p>
+
+  <form method="post" action="/api/action" class="card">
+    <input type="hidden" name="op" value="import.json" />
+    <input type="hidden" name="redirect" value={target} />
+    <label for="payload">JSON payload</label>
+    <p class="muted small">
+      Accepts either an object <code>{`{ "posts": [ … ] }`}</code> or a bare array of posts. <code
+        >content</code
+      > is required; every other field is optional.
+    </p>
+    <textarea
+      id="payload"
+      name="payload"
+      required
+      spellcheck="false"
+      rows="18"
+      placeholder={'{ "posts": [ { "content": "…" } ] }'}></textarea>
+    <p><button type="submit">Import</button></p>
+  </form>
+
+  <details class="card">
+    <summary>Example payload</summary>
+    <pre>{example}</pre>
+    <p class="muted small">
+      Required keyword matches come from the configured search profiles: a post with no matching
+      keyword is filtered out before any paid call. Add keywords (in the discussion language) under
+      <a href="/search-profiles">Search Profiles</a>.
+    </p>
+  </details>
+
+  <p>
+    Field rules: <code>content</code> 1–20 000 characters, at most 500 posts per import, timestamps in
+    RFC 3339, engagement counts non-negative. The response reports imported, duplicate and rejected counts.
+  </p>
+  <p><a href="/opportunities">Go to the inbox</a> · <a href="/settings">Job status</a></p>
+</Layout>

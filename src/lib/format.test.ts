@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   costSourceLabel,
+  formatAge,
   formatDateTime,
   formatMoney,
   formatNumber,
@@ -51,6 +52,16 @@ describe('format helpers', () => {
     expect(costSourceLabel('actual')).toBe('provider-reported charges');
     expect(costSourceLabel('estimate')).toBe('configured estimates only');
     expect(costSourceLabel('unknown')).toBe('unknown cost');
+  });
+
+  it('describes the age of a timestamp', () => {
+    const now = new Date('2024-05-01T12:00:00Z');
+    expect(formatAge('2024-05-01T11:59:40Z', now)).toBe('just now');
+    expect(formatAge('2024-05-01T11:30:00Z', now)).toBe('30m ago');
+    expect(formatAge('2024-05-01T05:00:00Z', now)).toBe('7h ago');
+    expect(formatAge('2024-04-20T12:00:00Z', now)).toBe('11d ago');
+    expect(formatAge(null, now)).toBe('unknown');
+    expect(formatAge('not a date', now)).toBe('unknown');
   });
 
   it('truncates long text with an ellipsis', () => {

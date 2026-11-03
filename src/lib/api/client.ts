@@ -169,6 +169,12 @@ export const api = {
 
   settings: () => request<Settings>('/api/v1/settings'),
 
+  importJson: (body: unknown) =>
+    request<{ ingested?: number; imported: number; duplicates: number; rejected: number }>(
+      '/api/v1/import/json',
+      { method: 'POST', body },
+    ),
+
   get: <T>(path: string) => request<T>(path),
   post: <T>(path: string, body: unknown = {}) => request<T>(path, { method: 'POST', body }),
   patch: <T>(path: string, body: unknown) => request<T>(path, { method: 'PATCH', body }),
