@@ -46,6 +46,7 @@ const OPS = new Set([
   'apify.run.reingest',
   'provider.test',
   'benchmark.start',
+  'benchmark.dataset',
   'settings.patch',
   'job.retry',
 ]);
@@ -462,6 +463,32 @@ export const POST: APIRoute = async ({ request }) => {
         message = `${result.status}${result.latency_ms === null ? '' : ` (${result.latency_ms} ms)`}${
           result.message ? `: ${result.message}` : ''
         }`;
+        break;
+      }
+      case 'benchmark.dataset': {
+        const dataset = body.text('dataset');
+        const raw = body.text('payload');
+        if (!dataset) throw new ApiError(422, 'validation_failed', 'dataset is required');
+        if (!raw) throw new ApiError(422, 'validation_failed', 'payload is empty');
+        let parsed: unknown;
+        try {
+          parsed = JSON.parse(raw);
+        } catch (error) {
+          throw new ApiError(
+            422,
+            'validation_failed',
+            `payload is not valid JSON: ${(error as Error).message}`,
+          );
+        }
+        const items = Array.isArray(parsed) ? parsed : (parsed as { items?: unknown }).items;
+        if (!Array.isArray(items)) {
+          throw new ApiError(422, 'validation_failed', 'payload must be an array of labeled items');
+        }
+        const result = await api.post<{ dataset: string; stored: number }>(
+          '/api/v1/providers/benchmark/dataset',
+          { dataset, items },
+        );
+        message = `stored ${result.stored} labeled examples in dataset ${result.dataset}`;
         break;
       }
       case 'benchmark.start':

@@ -51,6 +51,39 @@ const error = list.error ?? detail.error;
     <button type="submit">Queue benchmark</button>
   </form>
 
+  <details class="card">
+    <summary>Upload a labeled dataset (human ground truth)</summary>
+    <p class="muted small">
+      One JSON array of examples. Each example needs <code>external_ref</code>, <code>text</code>,
+      <code>language</code>, <code>expected_relevant</code> (true/false), <code
+        >expected_intent</code
+      >
+      (e.g. <code>explicit_solution_request</code>), <code>expected_vertical</code> (e.g.
+      <code>hr_recruiting</code>) and optionally <code>split</code> (<code>evaluation</code> default or
+      <code>tuning</code>). Only <code>evaluation</code> examples are scored, so tuning and evaluation
+      cannot silently overlap.
+    </p>
+    <form method="post" action="/api/action">
+      <input type="hidden" name="op" value="benchmark.dataset" />
+      <input type="hidden" name="redirect" value={target} />
+      <div class="form-row">
+        <div>
+          <label for="dataset-name">Dataset name</label>
+          <input id="dataset-name" name="dataset" value="operator-sample" required />
+        </div>
+      </div>
+      <label for="dataset-payload">Examples (JSON array)</label>
+      <textarea
+        id="dataset-payload"
+        name="payload"
+        rows="12"
+        spellcheck="false"
+        placeholder={'[{"external_ref":"s1","text":"…","language":"en","expected_relevant":true,"expected_intent":"active_problem","expected_vertical":"hr_recruiting"}]'}
+      ></textarea>
+      <p><button type="submit">Store dataset</button></p>
+    </form>
+  </details>
+
   <h2>Runs</h2>
   {
     list.data && list.data.items.length === 0 ? (
