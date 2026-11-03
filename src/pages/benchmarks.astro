@@ -1,0 +1,173 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { api } from '../lib/api/client';
+import { formatDateTime, formatMoney, formatPercent, label, statusClass } from '../lib/format';
+import { formTarget, load } from '../lib/page';
+
+const target = formTarget(Astro.url);
+const runId = Astro.url.searchParams.get('run');
+const [list, detail] = await Promise.all([
+  load(() => api.benchmarks()),
+  runId ? load(() => api.benchmark(runId)) : Promise.resolve({ data: null, error: null }),
+]);
+const error = list.error ?? detail.error;
+---
+
+<Layout title="Benchmarks">
+  <div class="page-head">
+    <h1>Benchmarks</h1>
+    <p class="muted small">The same labeled evaluation split, every provider, stored metrics.</p>
+  </div>
+
+  {
+    error && (
+      <p class="notice notice--error" role="alert">
+        {error}
+      </p>
+    )
+  }
+
+  <form method="post" action="/api/action" class="card">
+    <input type="hidden" name="op" value="benchmark.start" />
+    <input type="hidden" name="redirect" value={target} />
+    <h2>Run a benchmark</h2>
+    <div class="form-row">
+      <div>
+        <label for="dataset">Dataset</label>
+        <input id="dataset" name="dataset" value="seed" />
+      </div>
+      <div>
+        <label>Providers</label>
+        <div class="checkbox-row">
+          <input id="provider-jev" type="checkbox" name="providers" value="jev" checked />
+          <label for="provider-jev">jev (production role)</label>
+        </div>
+        <div class="checkbox-row">
+          <input id="provider-laya" type="checkbox" name="providers" value="laya" />
+          <label for="provider-laya">laya (benchmark role)</label>
+        </div>
+      </div>
+    </div>
+    <button type="submit">Queue benchmark</button>
+  </form>
+
+  <h2>Runs</h2>
+  {
+    list.data && list.data.items.length === 0 ? (
+      <p class="muted">No benchmark has been run yet.</p>
+    ) : (
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Run</th>
+              <th scope="col">Dataset</th>
+              <th scope="col">Status</th>
+              <th scope="col">Items</th>
+              <th scope="col">Created</th>
+              <th scope="col">Open</th>
+            </tr>
+          </thead>
+          <tbody>
+            {(list.data?.items ?? []).map((run) => (
+              <tr>
+                <td class="small">{run.id.slice(0, 8)}</td>
+                <td>{run.dataset}</td>
+                <td>
+                  <span class={statusClass(run.status)}>{label(run.status)}</span>
+                </td>
+                <td>{run.item_count}</td>
+                <td>{formatDateTime(run.created_at)}</td>
+                <td>
+                  <a href={`/benchmarks?run=${run.id}`}>detail</a>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )
+  }
+
+  {
+    detail.data && (
+      <>
+        <h2>Result · {detail.data.dataset}</h2>
+        {detail.data.error && <p class="notice notice--error">{detail.data.error}</p>}
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Provider</th>
+                <th scope="col">Model</th>
+                <th scope="col">Count</th>
+                <th scope="col">Precision</th>
+                <th scope="col">Recall</th>
+                <th scope="col">F1</th>
+                <th scope="col">Accuracy</th>
+                <th scope="col">FPR</th>
+                <th scope="col">FNR</th>
+                <th scope="col">TP / FP / TN / FN</th>
+                <th scope="col">Latency</th>
+                <th scope="col">Cost / 1000</th>
+              </tr>
+            </thead>
+            <tbody>
+              {detail.data.results.map((result) => (
+                <tr>
+                  <td>{result.provider}</td>
+                  <td>{result.model}</td>
+                  <td>{result.metrics.count}</td>
+                  <td>{formatPercent(result.metrics.precision)}</td>
+                  <td>{formatPercent(result.metrics.recall)}</td>
+                  <td>{formatPercent(result.metrics.f1)}</td>
+                  <td>{formatPercent(result.metrics.accuracy)}</td>
+                  <td>{formatPercent(result.metrics.false_positive_rate)}</td>
+                  <td>{formatPercent(result.metrics.false_negative_rate)}</td>
+                  <td>
+                    {result.metrics.confusion_matrix.tp} / {result.metrics.confusion_matrix.fp} /{' '}
+                    {result.metrics.confusion_matrix.tn} / {result.metrics.confusion_matrix.fn_}
+                  </td>
+                  <td>
+                    {result.latency_ms_avg === null
+                      ? 'unknown'
+                      : `${Math.round(result.latency_ms_avg)} ms`}
+                  </td>
+                  <td>{formatMoney(result.cost_per_1000_usd, 'USD')}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {detail.data.results.map((result) => (
+          <section class="card" aria-label={`Per language metrics for ${result.provider}`}>
+            <h3>{result.provider} by language</h3>
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">Language</th>
+                  <th scope="col">Examples</th>
+                  <th scope="col">Precision</th>
+                  <th scope="col">Recall</th>
+                  <th scope="col">F1</th>
+                </tr>
+              </thead>
+              <tbody>
+                {result.metrics.per_language.map((language) => (
+                  <tr>
+                    <td>{language.language}</td>
+                    <td>{language.count}</td>
+                    <td>{formatPercent(language.precision)}</td>
+                    <td>{formatPercent(language.recall)}</td>
+                    <td>{formatPercent(language.f1)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p class="muted small">unknown costs: {result.unknown_costs}</p>
+          </section>
+        ))}
+      </>
+    )
+  }
+</Layout>

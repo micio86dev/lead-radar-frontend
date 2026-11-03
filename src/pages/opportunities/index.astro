@@ -1,0 +1,323 @@
+---
+import EmptyState from '../../components/EmptyState.astro';
+import Layout from '../../layouts/Layout.astro';
+import { api } from '../../lib/api/client';
+import { formatDateTime, formatNumber, label, scoreClass } from '../../lib/format';
+import { load, pageLink, param } from '../../lib/page';
+
+const url = Astro.url;
+const verticals = [
+  'hr_recruiting',
+  'international_meetings',
+  'conferences_webinars',
+  'customer_support',
+  'tourism_hospitality',
+  'other',
+];
+const intents = [
+  'explicit_solution_request',
+  'active_problem',
+  'latent_problem',
+  'product_comparison',
+  'general_discussion',
+  'irrelevant',
+];
+const categories = ['hot', 'warm', 'potential', 'low'];
+const reviews = ['none', 'pending', 'in_review', 'resolved'];
+
+const asTimestamp = (value: string, endOfDay = false): string | undefined => {
+  if (!value) return undefined;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return `${value}T${endOfDay ? '23:59:59' : '00:00:00'}Z`;
+  }
+  return value;
+};
+
+const params = {
+  vertical: param(url, 'vertical') || undefined,
+  score_category: param(url, 'score_category') || undefined,
+  score_min: param(url, 'score_min') || undefined,
+  score_max: param(url, 'score_max') || undefined,
+  intent: param(url, 'intent') || undefined,
+  language: param(url, 'language') || undefined,
+  source_id: param(url, 'source_id') || undefined,
+  community: param(url, 'community') || undefined,
+  published_after: asTimestamp(param(url, 'published_after')),
+  published_before: asTimestamp(param(url, 'published_before'), true),
+  review_status: param(url, 'review_status') || undefined,
+  customer_type: param(url, 'customer_type') || undefined,
+  buying_intent: param(url, 'buying_intent') || undefined,
+  q: param(url, 'q') || undefined,
+  sort: param(url, 'sort') || 'score',
+  order: param(url, 'order') || 'desc',
+  page: Number(param(url, 'page') || '1'),
+  per_page: Number(param(url, 'per_page') || '25'),
+};
+
+const { data, error } = await load(() => api.opportunities(params));
+const totalPages = data ? Math.max(1, Math.ceil(data.total / data.per_page)) : 1;
+---
+
+<Layout title="Opportunities">
+  <div class="page-head">
+    <h1>Opportunities</h1>
+    <p class="muted small">
+      {data ? `${formatNumber(data.total)} leads matching the filters` : 'Loading…'}
+    </p>
+  </div>
+
+  {
+    error && (
+      <p class="notice notice--error" role="alert">
+        {error}
+      </p>
+    )
+  }
+
+  <form method="get" class="card" aria-label="Opportunity filters">
+    <div class="form-row">
+      <div>
+        <label for="vertical">Vertical</label>
+        <select id="vertical" name="vertical">
+          <option value="">Any</option>
+          {
+            verticals.map((value) => (
+              <option value={value} selected={params.vertical === value}>
+                {label(value)}
+              </option>
+            ))
+          }
+        </select>
+      </div>
+      <div>
+        <label for="score_category">Score category</label>
+        <select id="score_category" name="score_category">
+          <option value="">Any</option>
+          {
+            categories.map((value) => (
+              <option value={value} selected={params.score_category === value}>
+                {label(value)}
+              </option>
+            ))
+          }
+        </select>
+      </div>
+      <div>
+        <label for="score_min">Score min</label>
+        <input
+          id="score_min"
+          name="score_min"
+          type="number"
+          min="0"
+          max="100"
+          value={param(url, 'score_min')}
+        />
+      </div>
+      <div>
+        <label for="score_max">Score max</label>
+        <input
+          id="score_max"
+          name="score_max"
+          type="number"
+          min="0"
+          max="100"
+          value={param(url, 'score_max')}
+        />
+      </div>
+    </div>
+    <div class="form-row">
+      <div>
+        <label for="intent">Intent</label>
+        <select id="intent" name="intent">
+          <option value="">Any</option>
+          {
+            intents.map((value) => (
+              <option value={value} selected={params.intent === value}>
+                {label(value)}
+              </option>
+            ))
+          }
+        </select>
+      </div>
+      <div>
+        <label for="buying_intent">Buying intent</label>
+        <select id="buying_intent" name="buying_intent">
+          <option value="">Any</option>
+          {
+            ['none', 'weak', 'moderate', 'strong', 'explicit'].map((value) => (
+              <option value={value} selected={params.buying_intent === value}>
+                {label(value)}
+              </option>
+            ))
+          }
+        </select>
+      </div>
+      <div>
+        <label for="customer_type">Customer type</label>
+        <select id="customer_type" name="customer_type">
+          <option value="">Any</option>
+          {
+            ['b2b', 'b2c', 'unknown'].map((value) => (
+              <option value={value} selected={params.customer_type === value}>
+                {label(value)}
+              </option>
+            ))
+          }
+        </select>
+      </div>
+      <div>
+        <label for="language">Language (ISO code)</label>
+        <input id="language" name="language" value={param(url, 'language')} placeholder="en" />
+      </div>
+    </div>
+    <div class="form-row">
+      <div>
+        <label for="community">Community</label>
+        <input
+          id="community"
+          name="community"
+          value={param(url, 'community')}
+          placeholder="recruiting"
+        />
+      </div>
+      <div>
+        <label for="source_id">Source id</label>
+        <input id="source_id" name="source_id" value={param(url, 'source_id')} />
+      </div>
+      <div>
+        <label for="review_status">Review status</label>
+        <select id="review_status" name="review_status">
+          <option value="">Any</option>
+          {
+            reviews.map((value) => (
+              <option value={value} selected={params.review_status === value}>
+                {label(value)}
+              </option>
+            ))
+          }
+        </select>
+      </div>
+      <div>
+        <label for="q">Search text</label>
+        <input id="q" name="q" value={param(url, 'q')} placeholder="keyword" />
+      </div>
+    </div>
+    <div class="form-row">
+      <div>
+        <label for="published_after">Published after</label>
+        <input
+          id="published_after"
+          name="published_after"
+          type="date"
+          value={param(url, 'published_after')}
+        />
+      </div>
+      <div>
+        <label for="published_before">Published before</label>
+        <input
+          id="published_before"
+          name="published_before"
+          type="date"
+          value={param(url, 'published_before')}
+        />
+      </div>
+      <div>
+        <label for="sort">Sort by</label>
+        <select id="sort" name="sort">
+          {
+            ['score', 'recency', 'buying_intent', 'confidence'].map((value) => (
+              <option value={value} selected={params.sort === value}>
+                {label(value)}
+              </option>
+            ))
+          }
+        </select>
+      </div>
+      <div>
+        <label for="order">Order</label>
+        <select id="order" name="order">
+          <option value="desc" selected={params.order === 'desc'}>Descending</option>
+          <option value="asc" selected={params.order === 'asc'}>Ascending</option>
+        </select>
+      </div>
+    </div>
+    <div class="actions">
+      <button type="submit">Apply filters</button>
+      <a href="/opportunities">Reset</a>
+    </div>
+  </form>
+
+  {
+    data && data.items.length === 0 && (
+      <EmptyState
+        title="No opportunities match these filters"
+        hint="Loosen the filters or import a conversation."
+      />
+    )
+  }
+
+  {
+    data && data.items.length > 0 && (
+      <>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Opportunity</th>
+                <th scope="col">Vertical</th>
+                <th scope="col">Intent</th>
+                <th scope="col">Type</th>
+                <th scope="col">Score</th>
+                <th scope="col">Qualification</th>
+                <th scope="col">Language</th>
+                <th scope="col">Published</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.items.map((item) => (
+                <tr>
+                  <td>
+                    <a href={`/opportunities/${item.id}`}>{item.title ?? '(no title)'}</a>
+                    <div class="muted small">
+                      {item.community ?? 'unknown community'} · {item.comment_count} comments ·{' '}
+                      {item.evidence_count} evidence
+                    </div>
+                  </td>
+                  <td>{label(item.vertical_primary)}</td>
+                  <td>{label(item.intent)}</td>
+                  <td>{label(item.customer_type)}</td>
+                  <td>
+                    <span class={scoreClass(item.score_category)}>
+                      {label(item.score_category)}
+                    </span>
+                    <div class="muted small">
+                      {item.score ?? 'unknown'} · confidence{' '}
+                      {item.confidence === null ? 'unknown' : item.confidence.toFixed(2)}
+                    </div>
+                  </td>
+                  <td>{label(item.qualification_status)}</td>
+                  <td>{item.language ?? 'und'}</td>
+                  <td>{formatDateTime(item.published_at)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <nav class="actions" aria-label="Pagination">
+          <a href={pageLink(url, Math.max(1, data.page - 1))} aria-disabled={data.page <= 1}>
+            Previous
+          </a>
+          <span class="muted small">
+            Page {data.page} of {totalPages}
+          </span>
+          <a
+            href={pageLink(url, Math.min(totalPages, data.page + 1))}
+            aria-disabled={data.page >= totalPages}
+          >
+            Next
+          </a>
+        </nav>
+      </>
+    )
+  }
+</Layout>

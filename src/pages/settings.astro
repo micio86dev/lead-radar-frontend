@@ -1,0 +1,207 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { api } from '../lib/api/client';
+import { formatDateTime, formatNumber, label, statusClass } from '../lib/format';
+import { formTarget, load } from '../lib/page';
+
+const target = formTarget(Astro.url);
+const [settings, jobs] = await Promise.all([
+  load(() => api.settings()),
+  load(() => api.jobs({ per_page: 25 })),
+]);
+const error = settings.error ?? jobs.error;
+---
+
+<Layout title="Settings">
+  <div class="page-head">
+    <h1>Settings</h1>
+    <p class="muted small">
+      Ceilings here are enforced by the spend guard; invalid values are ignored.
+    </p>
+  </div>
+
+  {
+    error && (
+      <p class="notice notice--error" role="alert">
+        {error}
+      </p>
+    )
+  }
+
+  {
+    settings.data && (
+      <>
+        <section class="card" aria-label="Tenant and operational limits">
+          <h2>Tenant</h2>
+          <dl class="kv">
+            <>
+              <dt>Name</dt>
+              <dd>{settings.data.tenant.name}</dd>
+            </>
+            <>
+              <dt>Id</dt>
+              <dd>{settings.data.tenant.id}</dd>
+            </>
+            <>
+              <dt>Worker concurrency</dt>
+              <dd>{formatNumber(settings.data.operational.worker_concurrency)}</dd>
+            </>
+            <>
+              <dt>AI concurrency</dt>
+              <dd>{formatNumber(settings.data.operational.ai_concurrency)}</dd>
+            </>
+            <>
+              <dt>Job max attempts</dt>
+              <dd>{formatNumber(settings.data.operational.job_max_attempts)}</dd>
+            </>
+            <>
+              <dt>Retention (days)</dt>
+              <dd>{formatNumber(settings.data.operational.retention_days)}</dd>
+            </>
+          </dl>
+          <p class="muted small">
+            Operational limits come from the environment; restart the worker to change them.
+          </p>
+        </section>
+
+        <form method="post" action="/api/action" class="card">
+          <input type="hidden" name="op" value="settings.patch" />
+          <input type="hidden" name="redirect" value={target} />
+          <h2>Budgets and retention</h2>
+          <div class="form-row">
+            <div>
+              <label for="retention_days">Retention days</label>
+              <input
+                id="retention_days"
+                name="retention_days"
+                type="number"
+                min="1"
+                max="3650"
+                value={settings.data.operational.retention_days ?? 180}
+              />
+            </div>
+            <div>
+              <label for="daily">Daily Apify ceiling (EUR)</label>
+              <input
+                id="daily"
+                name="apify_daily_budget_eur"
+                type="number"
+                step="0.01"
+                min="0"
+                value={settings.data.budgets.apify_daily_budget_eur ?? ''}
+              />
+            </div>
+            <div>
+              <label for="run">Max run cost (EUR)</label>
+              <input
+                id="run"
+                name="apify_max_run_cost_eur"
+                type="number"
+                step="0.01"
+                min="0"
+                value={settings.data.budgets.apify_max_run_cost_eur ?? ''}
+              />
+            </div>
+            <div>
+              <label for="items">Max items per run</label>
+              <input
+                id="items"
+                name="apify_max_items_per_run"
+                type="number"
+                min="1"
+                value={settings.data.budgets.apify_max_items_per_run ?? ''}
+              />
+            </div>
+          </div>
+          <div class="checkbox-row">
+            <input
+              id="kill_switch"
+              type="checkbox"
+              name="kill_switch"
+              checked={settings.data.budgets.kill_switch ?? false}
+            />
+            <label for="kill_switch">Engage the Apify kill switch</label>
+          </div>
+          <p>
+            <button type="submit">Save settings</button>
+          </p>
+        </form>
+
+        <h2>Providers</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Provider</th>
+                <th scope="col">Status</th>
+                <th scope="col">Configured</th>
+                <th scope="col">Model</th>
+              </tr>
+            </thead>
+            <tbody>
+              {settings.data.providers.map((provider) => (
+                <tr>
+                  <td>{provider.provider}</td>
+                  <td>
+                    <span class={statusClass(provider.status)}>{label(provider.status)}</span>
+                  </td>
+                  <td>{provider.configured ? 'yes' : 'no'}</td>
+                  <td>{provider.model ?? 'unknown'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </>
+    )
+  }
+
+  <h2>Jobs</h2>
+  {
+    jobs.data && jobs.data.items.length === 0 ? (
+      <p class="muted">No jobs recorded.</p>
+    ) : (
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Kind</th>
+              <th scope="col">Status</th>
+              <th scope="col">Attempts</th>
+              <th scope="col">Run at</th>
+              <th scope="col">Last error</th>
+              <th scope="col">Retry</th>
+            </tr>
+          </thead>
+          <tbody>
+            {(jobs.data?.items ?? []).map((job) => (
+              <tr>
+                <td>{label(job.kind)}</td>
+                <td>
+                  <span class={statusClass(job.status)}>{label(job.status)}</span>
+                </td>
+                <td>
+                  {job.attempts} / {job.max_attempts}
+                </td>
+                <td>{formatDateTime(job.run_at)}</td>
+                <td class="small">{job.last_error ?? '—'}</td>
+                <td>
+                  {['failed', 'dead_letter'].includes(job.status) && (
+                    <form method="post" action="/api/action">
+                      <input type="hidden" name="op" value="job.retry" />
+                      <input type="hidden" name="id" value={job.id} />
+                      <input type="hidden" name="redirect" value={target} />
+                      <button type="submit" class="secondary">
+                        Retry
+                      </button>
+                    </form>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )
+  }
+</Layout>

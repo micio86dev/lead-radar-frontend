@@ -1,0 +1,102 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { api } from '../lib/api/client';
+import { costSourceLabel, formatDateTime, formatMoney, formatNumber } from '../lib/format';
+import { load } from '../lib/page';
+
+const [usage, apify] = await Promise.all([load(() => api.usage()), load(() => api.apifyUsage())]);
+const error = usage.error ?? apify.error;
+---
+
+<Layout title="Usage and Costs">
+  <div class="page-head">
+    <h1>Usage and Costs</h1>
+    <p class="muted small">Actual charges, estimates and unknown costs are kept separate.</p>
+  </div>
+
+  {
+    error && (
+      <p class="notice notice--error" role="alert">
+        {error}
+      </p>
+    )
+  }
+
+  {
+    usage.data && (
+      <>
+        <p class="muted small">
+          Period {formatDateTime(usage.data.period.from)} → {formatDateTime(usage.data.period.to)} ·{' '}
+          {usage.data.note}
+        </p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Provider</th>
+                <th scope="col">Requests</th>
+                <th scope="col">Tokens in</th>
+                <th scope="col">Tokens out</th>
+                <th scope="col">Actual</th>
+                <th scope="col">Estimated</th>
+                <th scope="col">Unknown cost requests</th>
+              </tr>
+            </thead>
+            <tbody>
+              {usage.data.items.map((item) => (
+                <tr>
+                  <td>{item.provider}</td>
+                  <td>{formatNumber(item.requests)}</td>
+                  <td>{formatNumber(item.input_tokens)}</td>
+                  <td>{formatNumber(item.output_tokens)}</td>
+                  <td>{formatMoney(item.actual_cost_usd, item.currency)}</td>
+                  <td>{formatMoney(item.estimated_cost_usd, item.currency)}</td>
+                  <td>{formatNumber(item.unknown_cost_requests)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </>
+    )
+  }
+
+  {
+    apify.data && (
+      <section class="card" aria-label="Apify budget consumption">
+        <h2>Apify budget consumption</h2>
+        <dl class="kv">
+          <>
+            <dt>Configured budget</dt>
+            <dd>{formatMoney(apify.data.budget_eur, 'EUR')}</dd>
+          </>
+          <>
+            <dt>Daily ceiling</dt>
+            <dd>{formatMoney(apify.data.daily_budget_eur, 'EUR')}</dd>
+          </>
+          <>
+            <dt>Max cost per run</dt>
+            <dd>{formatMoney(apify.data.max_run_cost_eur, 'EUR')}</dd>
+          </>
+          <>
+            <dt>Provider-reported spend</dt>
+            <dd>{formatMoney(apify.data.known_actual_usd, 'USD')}</dd>
+          </>
+          <>
+            <dt>Estimates</dt>
+            <dd>{formatMoney(apify.data.estimated_usd, 'USD')}</dd>
+          </>
+          <>
+            <dt>Remaining known budget</dt>
+            <dd>{formatMoney(apify.data.remaining_known_eur, 'EUR')}</dd>
+          </>
+          <>
+            <dt>Cost source</dt>
+            <dd>{costSourceLabel(apify.data.cost_source)}</dd>
+          </>
+        </dl>
+        <p class="muted small">{apify.data.currency_note}</p>
+      </section>
+    )
+  }
+</Layout>

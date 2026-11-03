@@ -1,0 +1,307 @@
+---
+import EmptyState from '../components/EmptyState.astro';
+import Layout from '../layouts/Layout.astro';
+import { api } from '../lib/api/client';
+import {
+  costSourceLabel,
+  formatDateTime,
+  formatMoney,
+  formatNumber,
+  label,
+  scoreClass,
+  statusClass,
+} from '../lib/format';
+import { load } from '../lib/page';
+
+const { data, error } = await load(() => api.dashboard());
+---
+
+<Layout title="Dashboard">
+  <div class="page-head">
+    <h1>Dashboard</h1>
+    <p class="muted small">Live counts from the API. Unknown costs are shown as unknown.</p>
+  </div>
+
+  {
+    error && (
+      <p class="notice notice--error" role="alert">
+        {error}
+      </p>
+    )
+  }
+
+  {
+    !data && !error && (
+      <EmptyState
+        title="No data yet"
+        hint="Import a conversation or run discovery to populate the inbox."
+      />
+    )
+  }
+
+  {
+    data && (
+      <>
+        <section class="grid" aria-label="Opportunity totals">
+          <div class="card">
+            <p class="muted small">Opportunities</p>
+            <p class="stat">{formatNumber(data.totals.opportunities)}</p>
+            <p class="muted small">
+              new in the last 24h: {formatNumber(data.totals.new_opportunities)}
+            </p>
+          </div>
+          <div class="card">
+            <p class="muted small">HOT</p>
+            <p class="stat">{formatNumber(data.totals.hot)}</p>
+            <p class="muted small">score 80–100</p>
+          </div>
+          <div class="card">
+            <p class="muted small">WARM</p>
+            <p class="stat">{formatNumber(data.totals.warm)}</p>
+            <p class="muted small">score 60–79</p>
+          </div>
+          <div class="card">
+            <p class="muted small">POTENTIAL</p>
+            <p class="stat">{formatNumber(data.totals.potential)}</p>
+            <p class="muted small">score 40–59</p>
+          </div>
+          <div class="card">
+            <p class="muted small">LOW</p>
+            <p class="stat">{formatNumber(data.totals.low)}</p>
+            <p class="muted small">score 0–39</p>
+          </div>
+        </section>
+
+        <div class="grid">
+          <section class="card" aria-label="Leads by vertical">
+            <h2>By vertical</h2>
+            {data.by_vertical.length === 0 ? (
+              <p class="muted small">No leads yet.</p>
+            ) : (
+              <table>
+                <thead>
+                  <tr>
+                    <th scope="col">Vertical</th>
+                    <th scope="col">Leads</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.by_vertical.map((row) => (
+                    <tr>
+                      <td>{label(row.vertical)}</td>
+                      <td>{formatNumber(row.count)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </section>
+
+          <section class="card" aria-label="Leads by intent">
+            <h2>By intent</h2>
+            {data.by_intent.length === 0 ? (
+              <p class="muted small">No leads yet.</p>
+            ) : (
+              <table>
+                <thead>
+                  <tr>
+                    <th scope="col">Intent</th>
+                    <th scope="col">Leads</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.by_intent.map((row) => (
+                    <tr>
+                      <td>{label(row.intent)}</td>
+                      <td>{formatNumber(row.count)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </section>
+
+          <section class="card" aria-label="Review queue and jobs">
+            <h2>Review queue</h2>
+            <dl class="kv">
+              <>
+                <dt>Pending review</dt>
+                <dd>{formatNumber(data.review_queue.pending_review)}</dd>
+              </>
+              <>
+                <dt>Needs edit</dt>
+                <dd>{formatNumber(data.review_queue.needs_edit)}</dd>
+              </>
+              <>
+                <dt>Approved</dt>
+                <dd>{formatNumber(data.review_queue.approved)}</dd>
+              </>
+            </dl>
+            <h3>Jobs</h3>
+            <dl class="kv">
+              <>
+                <dt>Failed</dt>
+                <dd>{formatNumber(data.job_failures.failed)}</dd>
+              </>
+              <>
+                <dt>Dead letter</dt>
+                <dd>{formatNumber(data.job_failures.dead_letter)}</dd>
+              </>
+              <>
+                <dt>AI decisions</dt>
+                <dd>{formatNumber(data.ai_decisions.total)}</dd>
+              </>
+            </dl>
+            <p>
+              <a href="/settings">Inspect jobs</a>
+            </p>
+          </section>
+
+          <section class="card" aria-label="Apify spending">
+            <h2>Apify spending</h2>
+            <dl class="kv">
+              <>
+                <dt>Configured budget</dt>
+                <dd>{formatMoney(data.apify.budget_eur, 'EUR')}</dd>
+              </>
+              <>
+                <dt>Daily ceiling</dt>
+                <dd>{formatMoney(data.apify.daily_budget_eur, 'EUR')}</dd>
+              </>
+              <>
+                <dt>Known actual (USD)</dt>
+                <dd>{formatMoney(data.apify.known_actual_usd, 'USD')}</dd>
+              </>
+              <>
+                <dt>Estimated (USD)</dt>
+                <dd>{formatMoney(data.apify.estimated_usd, 'USD')}</dd>
+              </>
+              <>
+                <dt>Remaining known (EUR)</dt>
+                <dd>{formatMoney(data.apify.remaining_known_eur, 'EUR')}</dd>
+              </>
+              <>
+                <dt>Runs / results</dt>
+                <dd>
+                  {formatNumber(data.apify.runs)} / {formatNumber(data.apify.results)}
+                </dd>
+              </>
+              <>
+                <dt>Errors</dt>
+                <dd>{formatNumber(data.apify.errors)}</dd>
+              </>
+              <>
+                <dt>Cost source</dt>
+                <dd>{costSourceLabel(data.apify.cost_source)}</dd>
+              </>
+              <>
+                <dt>Kill switch</dt>
+                <dd>{data.apify.kill_switch ? 'ENGAGED' : 'off'}</dd>
+              </>
+            </dl>
+            <p class="muted small">Ceilings are configured in EUR; Apify reports charges in USD.</p>
+          </section>
+        </div>
+
+        <h2>Provider status</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Provider</th>
+                <th scope="col">State</th>
+                <th scope="col">Model</th>
+                <th scope="col">Requests</th>
+                <th scope="col">Last request</th>
+                <th scope="col">Last error</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.providers.map((provider) => (
+                <tr>
+                  <td>{provider.provider}</td>
+                  <td>
+                    <span class={statusClass(provider.status)}>{label(provider.status)}</span>
+                  </td>
+                  <td>{provider.model ?? 'unknown'}</td>
+                  <td>{formatNumber(provider.usage.requests)}</td>
+                  <td>{formatDateTime(provider.last_request_at)}</td>
+                  <td class="small">{provider.last_error ?? '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <h2>Recent discoveries</h2>
+        {data.recent_opportunities.length === 0 ? (
+          <EmptyState
+            title="No opportunities yet"
+            hint="Import JSON or run a validated Actor to start."
+          />
+        ) : (
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">Opportunity</th>
+                  <th scope="col">Vertical</th>
+                  <th scope="col">Score</th>
+                  <th scope="col">Qualification</th>
+                  <th scope="col">Published</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.recent_opportunities.map((item) => (
+                  <tr>
+                    <td>
+                      <a href={`/opportunities/${item.id}`}>{item.title ?? '(no title)'}</a>
+                      <div class="muted small">
+                        {item.community ?? 'unknown community'} · {item.language ?? 'und'}
+                      </div>
+                    </td>
+                    <td>{label(item.vertical_primary)}</td>
+                    <td>
+                      <span class={scoreClass(item.score_category)}>
+                        {label(item.score_category)}
+                      </span>
+                      <div class="muted small">{item.score ?? 'unknown'}</div>
+                    </td>
+                    <td>{label(item.qualification_status)}</td>
+                    <td>{formatDateTime(item.published_at)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        <h2>Provider costs (30 days)</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Provider</th>
+                <th scope="col">Requests</th>
+                <th scope="col">Actual</th>
+                <th scope="col">Estimated</th>
+                <th scope="col">Unknown cost requests</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.costs.map((cost) => (
+                <tr>
+                  <td>{cost.provider}</td>
+                  <td>{formatNumber(cost.requests)}</td>
+                  <td>{formatMoney(cost.actual_cost_usd, cost.currency)}</td>
+                  <td>{formatMoney(cost.estimated_cost_usd, cost.currency)}</td>
+                  <td>{formatNumber(cost.unknown_cost_requests)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </>
+    )
+  }
+</Layout>

@@ -1,0 +1,165 @@
+---
+import CopyButton from '../../components/CopyButton.vue';
+import Layout from '../../layouts/Layout.astro';
+import { api } from '../../lib/api/client';
+import { formatDateTime, label, statusClass } from '../../lib/format';
+import { formTarget, load } from '../../lib/page';
+
+const id = Astro.params.id ?? '';
+const { data, error } = await load(() => api.comment(id));
+const target = formTarget(Astro.url);
+const editable = data ? ['draft', 'pending_review', 'needs_edit'].includes(data.status) : false;
+---
+
+<Layout title={data ? `Comment · ${label(data.variant)}` : 'Comment'}>
+  <div class="page-head">
+    <h1>Comment · {data ? label(data.variant) : 'unknown variant'}</h1>
+    {data && <span class={statusClass(data.status)}>{label(data.status)}</span>}
+  </div>
+
+  {
+    error && (
+      <p class="notice notice--error" role="alert">
+        {error}
+      </p>
+    )
+  }
+  <p>
+    {data ? <a href={`/opportunities/${data.lead_id}`}>← Back to the opportunity</a> : null}
+    {
+      data?.lead.url ? (
+        <a
+          href={data.lead.url}
+          target="_blank"
+          rel="noopener noreferrer nofollow"
+          style="margin-left:1rem"
+        >
+          Open the original discussion
+        </a>
+      ) : null
+    }
+  </p>
+
+  {
+    data && (
+      <>
+        <section class="card" aria-label="Current draft">
+          <h2>
+            Current draft (version {data.version}, {data.language})
+          </h2>
+          <div class="comment-body">{data.body}</div>
+          <p class="actions" style="margin-top:0.75rem">
+            <CopyButton text={data.body} label="Copy to clipboard" client:load />
+            {data.published_at ? (
+              <span class="muted small">published {formatDateTime(data.published_at)}</span>
+            ) : null}
+          </p>
+          {editable && (
+            <form method="post" action="/api/action" style="margin-top:1rem">
+              <input type="hidden" name="op" value="comment.patch" />
+              <input type="hidden" name="id" value={data.id} />
+              <input type="hidden" name="redirect" value={target} />
+              <label for="body">Edit the body (creates a new version)</label>
+              <textarea id="body" name="body">
+                {data.body}
+              </textarea>
+              <p>
+                <button type="submit">Save new version</button>
+              </p>
+            </form>
+          )}
+        </section>
+
+        <section class="card" aria-label="Review actions">
+          <h2>Review actions</h2>
+          <p class="muted small">
+            Approval is a human decision. Recording publication only records what you posted by
+            hand; Lead Radar never posts anything.
+          </p>
+          <div class="actions">
+            {['draft', 'pending_review', 'needs_edit'].includes(data.status) && (
+              <>
+                <form method="post" action="/api/action">
+                  <input type="hidden" name="op" value="comment.approve" />
+                  <input type="hidden" name="id" value={data.id} />
+                  <input type="hidden" name="redirect" value={target} />
+                  <button type="submit">Approve</button>
+                </form>
+                <form method="post" action="/api/action">
+                  <input type="hidden" name="op" value="comment.reject" />
+                  <input type="hidden" name="id" value={data.id} />
+                  <input type="hidden" name="redirect" value={target} />
+                  <button type="submit" class="secondary">
+                    Reject
+                  </button>
+                </form>
+                {data.status !== 'needs_edit' && (
+                  <form method="post" action="/api/action">
+                    <input type="hidden" name="op" value="comment.status" />
+                    <input type="hidden" name="id" value={data.id} />
+                    <input type="hidden" name="status" value="needs_edit" />
+                    <input type="hidden" name="redirect" value={target} />
+                    <button type="submit" class="secondary">
+                      Request edits
+                    </button>
+                  </form>
+                )}
+              </>
+            )}
+            {data.status === 'approved' && (
+              <form method="post" action="/api/action">
+                <input type="hidden" name="op" value="comment.publish" />
+                <input type="hidden" name="id" value={data.id} />
+                <input type="hidden" name="redirect" value={target} />
+                <label for="note">Publication note</label>
+                <input id="note" name="note" placeholder="posted manually in the thread" />
+                <p>
+                  <button type="submit">Record manual publication</button>
+                </p>
+              </form>
+            )}
+          </div>
+        </section>
+
+        <h2>History</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Version</th>
+                <th scope="col">Actor</th>
+                <th scope="col">Created</th>
+                <th scope="col">Body</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.versions.map((version) => (
+                <tr>
+                  <td>{version.version}</td>
+                  <td>{version.actor}</td>
+                  <td>{formatDateTime(version.created_at)}</td>
+                  <td class="small">{version.body}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <h2>Review events</h2>
+        {data.review_events.length === 0 ? (
+          <p class="muted">No events yet.</p>
+        ) : (
+          <ul>
+            {data.review_events.map((event) => (
+              <li>
+                <strong>{label(event.event)}</strong> · {event.actor} ·{' '}
+                {formatDateTime(event.created_at)}
+                {event.note ? ` — ${event.note}` : ''}
+              </li>
+            ))}
+          </ul>
+        )}
+      </>
+    )
+  }
+</Layout>

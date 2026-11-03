@@ -1,0 +1,71 @@
+---
+import EmptyState from '../components/EmptyState.astro';
+import Layout from '../layouts/Layout.astro';
+import { api } from '../lib/api/client';
+import { formatDateTime, label } from '../lib/format';
+import { formTarget, load } from '../lib/page';
+
+const target = formTarget(Astro.url);
+const [pending, needsEdit] = await Promise.all([
+  load(() => api.comments({ status: 'pending_review', per_page: 50 })),
+  load(() => api.comments({ status: 'needs_edit', per_page: 50 })),
+]);
+const error = pending.error ?? needsEdit.error;
+const comments = [...(pending.data?.items ?? []), ...(needsEdit.data?.items ?? [])];
+---
+
+<Layout title="Review Queue">
+  <div class="page-head">
+    <h1>Review Queue</h1>
+    <p class="muted small">{comments.length} drafts awaiting a human decision</p>
+  </div>
+
+  {
+    error && (
+      <p class="notice notice--error" role="alert">
+        {error}
+      </p>
+    )
+  }
+
+  {
+    comments.length === 0 && (
+      <EmptyState title="Nothing to review" hint="Generate comment variants from an opportunity." />
+    )
+  }
+
+  {
+    comments.map((comment) => (
+      <article class="card" aria-label={`Draft for ${comment.lead_title ?? 'opportunity'}`}>
+        <div class="page-head">
+          <h2 style="margin:0">
+            <a href={`/comments/${comment.id}`}>{comment.lead_title ?? '(no title)'}</a>
+          </h2>
+          <span class="muted small">
+            {label(comment.variant)} · {label(comment.status)} · {comment.language} · v
+            {comment.version}
+          </span>
+        </div>
+        <p class="comment-body">{comment.body}</p>
+        <p class="actions">
+          <form method="post" action="/api/action">
+            <input type="hidden" name="op" value="comment.approve" />
+            <input type="hidden" name="id" value={comment.id} />
+            <input type="hidden" name="redirect" value={target} />
+            <button type="submit">Approve</button>
+          </form>
+          <form method="post" action="/api/action">
+            <input type="hidden" name="op" value="comment.reject" />
+            <input type="hidden" name="id" value={comment.id} />
+            <input type="hidden" name="redirect" value={target} />
+            <button type="submit" class="secondary">
+              Reject
+            </button>
+          </form>
+          <a href={`/comments/${comment.id}`}>edit</a>
+          <span class="muted small">updated {formatDateTime(comment.updated_at)}</span>
+        </p>
+      </article>
+    ))
+  }
+</Layout>

@@ -1,0 +1,144 @@
+---
+import EmptyState from '../../components/EmptyState.astro';
+import Layout from '../../layouts/Layout.astro';
+import { api } from '../../lib/api/client';
+import { formatDateTime, label, statusClass, truncate } from '../../lib/format';
+import { load, pageLink, param } from '../../lib/page';
+
+const url = Astro.url;
+const statuses = [
+  'draft',
+  'pending_review',
+  'needs_edit',
+  'approved',
+  'rejected',
+  'published_manually',
+];
+const variants = ['helpful', 'soft_pitch', 'direct_pitch'];
+
+const params = {
+  status: param(url, 'status') || undefined,
+  variant: param(url, 'variant') || undefined,
+  lead_id: param(url, 'lead_id') || undefined,
+  page: Number(param(url, 'page') || '1'),
+  per_page: 25,
+};
+
+const { data, error } = await load(() => api.comments(params));
+const totalPages = data ? Math.max(1, Math.ceil(data.total / data.per_page)) : 1;
+---
+
+<Layout title="Comment Studio">
+  <div class="page-head">
+    <h1>Comment Studio</h1>
+    <p class="muted small">Drafts only. Approval and publication are separate human actions.</p>
+  </div>
+
+  {
+    error && (
+      <p class="notice notice--error" role="alert">
+        {error}
+      </p>
+    )
+  }
+
+  <form method="get" class="card" aria-label="Comment filters">
+    <div class="form-row">
+      <div>
+        <label for="status">Status</label>
+        <select id="status" name="status">
+          <option value="">Any</option>
+          {
+            statuses.map((value) => (
+              <option value={value} selected={params.status === value}>
+                {label(value)}
+              </option>
+            ))
+          }
+        </select>
+      </div>
+      <div>
+        <label for="variant">Variant</label>
+        <select id="variant" name="variant">
+          <option value="">Any</option>
+          {
+            variants.map((value) => (
+              <option value={value} selected={params.variant === value}>
+                {label(value)}
+              </option>
+            ))
+          }
+        </select>
+      </div>
+      <div>
+        <label for="lead_id">Lead id</label>
+        <input id="lead_id" name="lead_id" value={param(url, 'lead_id')} />
+      </div>
+    </div>
+    <div class="actions">
+      <button type="submit">Apply filters</button>
+      <a href="/comments">Reset</a>
+    </div>
+  </form>
+
+  {
+    data && data.items.length === 0 && (
+      <EmptyState
+        title="No comments match"
+        hint="Generate drafts from an opportunity detail page."
+      />
+    )
+  }
+
+  {
+    data && data.items.length > 0 && (
+      <>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Lead</th>
+                <th scope="col">Variant</th>
+                <th scope="col">Status</th>
+                <th scope="col">Language</th>
+                <th scope="col">Draft</th>
+                <th scope="col">Version</th>
+                <th scope="col">Updated</th>
+                <th scope="col">Open</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.items.map((comment) => (
+                <tr>
+                  <td>
+                    <a href={`/opportunities/${comment.lead_id}`}>
+                      {comment.lead_title ?? '(no title)'}
+                    </a>
+                  </td>
+                  <td>{label(comment.variant)}</td>
+                  <td>
+                    <span class={statusClass(comment.status)}>{label(comment.status)}</span>
+                  </td>
+                  <td>{comment.language}</td>
+                  <td class="small">{truncate(comment.body, 120)}</td>
+                  <td>{comment.version}</td>
+                  <td>{formatDateTime(comment.updated_at)}</td>
+                  <td>
+                    <a href={`/comments/${comment.id}`}>edit / review</a>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <nav class="actions" aria-label="Pagination">
+          <a href={pageLink(url, Math.max(1, data.page - 1))}>Previous</a>
+          <span class="muted small">
+            Page {data.page} of {totalPages}
+          </span>
+          <a href={pageLink(url, Math.min(totalPages, data.page + 1))}>Next</a>
+        </nav>
+      </>
+    )
+  }
+</Layout>

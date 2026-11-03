@@ -1,0 +1,391 @@
+---
+import ConfirmSubmit from '../../components/ConfirmSubmit.vue';
+import Layout from '../../layouts/Layout.astro';
+import { api } from '../../lib/api/client';
+import {
+  formatDateTime,
+  formatNumber,
+  formatPercent,
+  label,
+  scoreClass,
+  statusClass,
+  truncate,
+} from '../../lib/format';
+import { formTarget, load } from '../../lib/page';
+
+const id = Astro.params.id ?? '';
+const { data, error } = await load(() => api.opportunity(id));
+const target = formTarget(Astro.url);
+const dimensions: Record<string, string> = {
+  problem_relevance: 'Problem relevance',
+  buying_intent: 'Buying intent',
+  business_potential: 'Business potential',
+  product_fit: 'Product fit',
+  recency: 'Recency',
+  engagement: 'Engagement',
+};
+---
+
+<Layout title={data?.title ?? 'Opportunity'}>
+  <div class="page-head">
+    <h1>{data?.title ?? 'Opportunity'}</h1>
+    {
+      data && (
+        <span class={scoreClass(data.score_category)}>
+          {label(data.score_category)} · {data.score ?? 'unknown'}
+        </span>
+      )
+    }
+  </div>
+
+  {
+    error && (
+      <p class="notice notice--error" role="alert">
+        {error}
+      </p>
+    )
+  }
+  <p><a href="/opportunities">← Back to the inbox</a></p>
+
+  {
+    data && (
+      <>
+        <div class="grid">
+          <section class="card" aria-label="Opportunity summary">
+            <h2>Summary</h2>
+            <dl class="kv">
+              <>
+                <dt>Vertical</dt>
+                <dd>
+                  {label(data.vertical_primary)}
+                  {data.vertical_secondary.length > 0
+                    ? ` · also ${data.vertical_secondary.map(label).join(', ')}`
+                    : ''}
+                </dd>
+              </>
+              <>
+                <dt>Intent</dt>
+                <dd>{label(data.intent)}</dd>
+              </>
+              <>
+                <dt>Customer type</dt>
+                <dd>{label(data.customer_type)}</dd>
+              </>
+              <>
+                <dt>Buying intent</dt>
+                <dd>{label(data.buying_intent)}</dd>
+              </>
+              <>
+                <dt>Business potential</dt>
+                <dd>{label(data.business_potential)}</dd>
+              </>
+              <>
+                <dt>Product fit</dt>
+                <dd>{label(data.product_fit)}</dd>
+              </>
+              <>
+                <dt>Confidence</dt>
+                <dd>{data.confidence === null ? 'unknown' : data.confidence.toFixed(3)}</dd>
+              </>
+              <>
+                <dt>Qualification</dt>
+                <dd>{label(data.qualification_status)}</dd>
+              </>
+              <>
+                <dt>Review status</dt>
+                <dd>{label(data.review_status)}</dd>
+              </>
+              <>
+                <dt>Language</dt>
+                <dd>{data.language ?? 'und'}</dd>
+              </>
+              <>
+                <dt>Source</dt>
+                <dd>{data.source_name ?? 'unknown'}</dd>
+              </>
+              <>
+                <dt>Community</dt>
+                <dd>{data.community ?? 'unknown'}</dd>
+              </>
+              <dt>Original URL</dt>
+              <dd>
+                {data.url ? (
+                  <a href={data.url} rel="noopener noreferrer nofollow" target="_blank">
+                    open the original discussion
+                  </a>
+                ) : (
+                  'not recorded'
+                )}
+              </dd>
+              <>
+                <dt>Published</dt>
+                <dd>{formatDateTime(data.published_at)}</dd>
+              </>
+              <>
+                <dt>Discovered</dt>
+                <dd>{formatDateTime(data.discovered_at)}</dd>
+              </>
+              <dt>Engagement</dt>
+              <dd>
+                {data.engagement
+                  ? `${formatNumber(data.engagement.upvotes)} upvotes · ${formatNumber(data.engagement.comments)} comments · ${formatNumber(data.engagement.shares)} shares`
+                  : 'unknown (no source data)'}
+              </dd>
+            </dl>
+            <div class="actions">
+              <form method="post" action="/api/action">
+                <input type="hidden" name="op" value="opportunity.analyze" />
+                <input type="hidden" name="id" value={data.id} />
+                <input type="hidden" name="redirect" value={target} />
+                <button type="submit">Re-run structured analysis</button>
+              </form>
+              <form method="post" action="/api/action">
+                <input type="hidden" name="op" value="opportunity.generate" />
+                <input type="hidden" name="id" value={data.id} />
+                <input type="hidden" name="redirect" value={target} />
+                <button type="submit" class="secondary">
+                  Draft three comment variants
+                </button>
+              </form>
+            </div>
+            <form method="post" action="/api/action" style="margin-top:1rem">
+              <input type="hidden" name="op" value="opportunity.delete" />
+              <input type="hidden" name="id" value={data.id} />
+              <input type="hidden" name="redirect" value={target} />
+              <fieldset>
+                <legend>Data removal</legend>
+                <p class="muted small">
+                  Removes the stored content and unreviewed drafts. Keeps an audit record.
+                </p>
+                <ConfirmSubmit
+                  label="Remove stored content"
+                  confirmation="I understand this removes the collected content"
+                  danger={true}
+                  client:load
+                />
+              </fieldset>
+            </form>
+          </section>
+
+          <section class="card" aria-label="Original content and evidence">
+            <h2>Original content</h2>
+            <div class="comment-body prose">{data.content}</div>
+            <h3>Evidence (verbatim excerpts)</h3>
+            {data.evidence.length === 0 ? (
+              <p class="muted small">
+                No configured keyword excerpt was found; nothing is invented to fill the gap.
+              </p>
+            ) : (
+              <ul>
+                {data.evidence.map((item) => (
+                  <li>
+                    <q>{item.excerpt}</q>
+                    <div class="muted small">
+                      characters {item.start_offset}–{item.end_offset}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        </div>
+
+        <h2>Score breakdown</h2>
+        {data.score_breakdown === null ? (
+          <p class="muted">Not scored yet.</p>
+        ) : (
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">Dimension</th>
+                  <th scope="col">Weight</th>
+                  <th scope="col">Raw input</th>
+                  <th scope="col">Normalized</th>
+                  <th scope="col">Contribution</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.score_breakdown.components.map((component) => (
+                  <tr>
+                    <td>{dimensions[component.dimension] ?? component.dimension}</td>
+                    <td>{component.weight}</td>
+                    <td>{component.raw === null ? 'missing' : component.raw.toFixed(3)}</td>
+                    <td>
+                      {component.normalized === null ? 'missing' : component.normalized.toFixed(3)}
+                    </td>
+                    <td>{component.contribution.toFixed(2)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        {data.score_breakdown && (
+          <p class="muted small">
+            Score version {data.score_breakdown.version} · total {data.score_breakdown.score} ·
+            category {label(data.score_breakdown.category)} · computed{' '}
+            {formatDateTime(data.score_breakdown.created_at)}
+          </p>
+        )}
+
+        <h2>Structured decision</h2>
+        {data.decision === null ? (
+          <p class="muted">No decision recorded for this post.</p>
+        ) : (
+          <>
+            <dl class="kv">
+              <dt>Provider / model</dt>
+              <dd>
+                {data.decision.provider} · {data.decision.model}{' '}
+                {data.decision.model_version ? `(${data.decision.model_version})` : ''}
+              </dd>
+              <dt>Request id</dt>
+              <dd>{data.decision.provider_request_id ?? 'not reported'}</dd>
+              <dt>Confidence</dt>
+              <dd>
+                {data.decision.confidence === null
+                  ? 'unknown'
+                  : data.decision.confidence.toFixed(3)}
+              </dd>
+              <dt>Latency</dt>
+              <dd>{data.decision.latency_ms ?? 'unknown'} ms</dd>
+              <dt>Tokens in / out</dt>
+              <dd>
+                {data.decision.input_tokens ?? 'unknown'} /{' '}
+                {data.decision.output_tokens ?? 'unknown'}
+              </dd>
+              <dt>Decided</dt>
+              <dd>{formatDateTime(data.decision.created_at)}</dd>
+            </dl>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th scope="col">Question</th>
+                    <th scope="col">Answer</th>
+                    <th scope="col">Probabilities</th>
+                    <th scope="col">Confidence</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.decision.answers.map((answer) => (
+                    <tr>
+                      <td>{answer.question}</td>
+                      <td>
+                        {answer.type === 'noul'
+                          ? formatPercent(answer.noul)
+                          : answer.type === 'choice'
+                            ? (answer.choice ?? 'unknown')
+                            : answer.score === null
+                              ? 'unknown'
+                              : answer.score.toFixed(3)}
+                      </td>
+                      <td class="small">
+                        {answer.probabilities
+                          ? Object.entries(answer.probabilities)
+                              .map(([key, value]) => `${key}: ${formatPercent(value)}`)
+                              .join(', ')
+                          : '—'}
+                      </td>
+                      <td>
+                        {answer.confidence === null ? 'derived' : answer.confidence.toFixed(3)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+
+        <h2>Generative analysis</h2>
+        {data.analyses.length === 0 ? (
+          <p class="muted">No generative analysis recorded.</p>
+        ) : (
+          <ul>
+            {data.analyses.map((analysis) => (
+              <li>
+                <strong>{label(analysis.kind)}</strong> · {analysis.provider} {analysis.model} ·{' '}
+                {formatDateTime(analysis.created_at)}
+                <div class="prose">{analysis.summary ?? analysis.error ?? 'no summary'}</div>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <h2>Comments</h2>
+        {data.comments.length === 0 ? (
+          <p class="muted">No drafts yet. Generate the three variants above.</p>
+        ) : (
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">Variant</th>
+                  <th scope="col">Status</th>
+                  <th scope="col">Excerpt</th>
+                  <th scope="col">Version</th>
+                  <th scope="col">Open</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.comments.map((comment) => (
+                  <tr>
+                    <td>{label(comment.variant)}</td>
+                    <td>
+                      <span class={statusClass(comment.status)}>{label(comment.status)}</span>
+                    </td>
+                    <td class="small">{truncate(comment.body, 120)}</td>
+                    <td>{comment.version}</td>
+                    <td>
+                      <a href={`/comments/${comment.id}`}>review</a>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        <h2>Engagement history</h2>
+        {data.engagements.length === 0 ? (
+          <p class="muted">Nothing recorded yet.</p>
+        ) : (
+          <ul>
+            {data.engagements.map((engagement) => (
+              <li>
+                {label(engagement.kind)} · {formatDateTime(engagement.occurred_at)}
+                {engagement.note ? ` — ${engagement.note}` : ''}
+              </li>
+            ))}
+          </ul>
+        )}
+        <form method="post" action="/api/action" class="card">
+          <input type="hidden" name="op" value="engagement.create" />
+          <input type="hidden" name="lead_id" value={data.id} />
+          <input type="hidden" name="redirect" value={target} />
+          <h3>Record a manual engagement</h3>
+          <p class="muted small">
+            This records what you did elsewhere. Lead Radar never contacts anyone.
+          </p>
+          <div class="form-row">
+            <div>
+              <label for="engagement-kind">Kind</label>
+              <select id="engagement-kind" name="kind">
+                {['reply', 'dm', 'meeting', 'interest', 'lost', 'other'].map((value) => (
+                  <option value={value}>{label(value)}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label for="engagement-note">Note</label>
+              <input id="engagement-note" name="note" />
+            </div>
+          </div>
+          <button type="submit">Record engagement</button>
+        </form>
+      </>
+    )
+  }
+</Layout>

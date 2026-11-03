@@ -1,0 +1,145 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { api } from '../lib/api/client';
+import { formatDateTime, label, statusClass } from '../lib/format';
+import { formTarget, load, param } from '../lib/page';
+
+const url = Astro.url;
+const target = formTarget(url);
+const params = {
+  vertical: param(url, 'vertical') || undefined,
+  validation_status: param(url, 'validation_status') || undefined,
+  per_page: 100,
+};
+const { data, error } = await load(() => api.communities(params));
+---
+
+<Layout title="Communities">
+  <div class="page-head">
+    <h1>Communities</h1>
+    <p class="muted small">Seeded as pending. Enabling requires recorded validation evidence.</p>
+  </div>
+
+  {
+    error && (
+      <p class="notice notice--error" role="alert">
+        {error}
+      </p>
+    )
+  }
+
+  <form method="get" class="card" aria-label="Community filters">
+    <div class="form-row">
+      <div>
+        <label for="vertical">Vertical</label>
+        <select id="vertical" name="vertical">
+          <option value="">Any</option>
+          {
+            [
+              'hr_recruiting',
+              'international_meetings',
+              'conferences_webinars',
+              'customer_support',
+              'tourism_hospitality',
+            ].map((value) => (
+              <option value={value} selected={param(url, 'vertical') === value}>
+                {label(value)}
+              </option>
+            ))
+          }
+        </select>
+      </div>
+      <div>
+        <label for="validation_status">Validation</label>
+        <select id="validation_status" name="validation_status">
+          <option value="">Any</option>
+          {
+            ['pending', 'validated', 'rejected'].map((value) => (
+              <option value={value} selected={param(url, 'validation_status') === value}>
+                {label(value)}
+              </option>
+            ))
+          }
+        </select>
+      </div>
+    </div>
+    <button type="submit">Filter</button>
+  </form>
+
+  {
+    data && (
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Community</th>
+              <th scope="col">Vertical</th>
+              <th scope="col">Validation</th>
+              <th scope="col">Enabled</th>
+              <th scope="col">Notes</th>
+              <th scope="col">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.items.map((community) => (
+              <tr>
+                <td>{community.name}</td>
+                <td>{label(community.vertical)}</td>
+                <td>
+                  <span class={statusClass(community.validation_status)}>
+                    {label(community.validation_status)}
+                  </span>
+                </td>
+                <td>{community.enabled ? 'yes' : 'no'}</td>
+                <td class="small">{community.notes ?? '—'}</td>
+                <td>
+                  <form method="post" action="/api/action">
+                    <input type="hidden" name="op" value="community.patch" />
+                    <input type="hidden" name="id" value={community.id} />
+                    <input type="hidden" name="redirect" value={target} />
+                    <div class="checkbox-row">
+                      <input
+                        id={`enable-${community.id}`}
+                        type="checkbox"
+                        name="enabled"
+                        checked={community.enabled}
+                      />
+                      <label for={`enable-${community.id}`}>Enabled</label>
+                    </div>
+                    <p>
+                      <button type="submit" class="secondary">
+                        Save
+                      </button>
+                    </p>
+                  </form>
+                  <form method="post" action="/api/action">
+                    <input type="hidden" name="op" value="community.validate" />
+                    <input type="hidden" name="id" value={community.id} />
+                    <input type="hidden" name="redirect" value={target} />
+                    <label for={`evidence-${community.id}`}>Validation evidence</label>
+                    <input
+                      id={`evidence-${community.id}`}
+                      name="evidence"
+                      placeholder="what was verified and where"
+                    />
+                    <label for={`outcome-${community.id}`}>Outcome</label>
+                    <select id={`outcome-${community.id}`} name="outcome">
+                      <option value="validated">validated</option>
+                      <option value="rejected">rejected</option>
+                    </select>
+                    <p>
+                      <button type="submit">Record validation</button>
+                    </p>
+                  </form>
+                  <p class="muted small">
+                    last checked {formatDateTime(community.last_checked_at)}
+                  </p>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )
+  }
+</Layout>

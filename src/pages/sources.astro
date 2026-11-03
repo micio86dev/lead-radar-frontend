@@ -1,0 +1,123 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { api } from '../lib/api/client';
+import { formatDateTime, label, statusClass } from '../lib/format';
+import { formTarget, load } from '../lib/page';
+
+const target = formTarget(Astro.url);
+const { data, error } = await load(() => api.sources());
+---
+
+<Layout title="Sources">
+  <div class="page-head">
+    <h1>Sources</h1>
+    <p class="muted small">
+      Manual JSON import always works; other sources stay disabled until validated.
+    </p>
+  </div>
+
+  {
+    error && (
+      <p class="notice notice--error" role="alert">
+        {error}
+      </p>
+    )
+  }
+
+  <form method="post" action="/api/action" class="card">
+    <input type="hidden" name="op" value="source.create" />
+    <input type="hidden" name="redirect" value={target} />
+    <h2>New source</h2>
+    <div class="form-row">
+      <div>
+        <label for="name">Name</label>
+        <input id="name" name="name" required />
+      </div>
+      <div>
+        <label for="provider">Provider</label>
+        <select id="provider" name="provider">
+          <option value="apify">apify</option>
+          <option value="manual_import">manual_import</option>
+          <option value="official_api">official_api</option>
+          <option value="licensed_feed">licensed_feed</option>
+        </select>
+      </div>
+      <div>
+        <label for="source_type">Source type</label>
+        <select id="source_type" name="source_type">
+          <option value="community_feed">community_feed</option>
+          <option value="manual_json">manual_json</option>
+          <option value="webhook">webhook</option>
+        </select>
+      </div>
+    </div>
+    <label for="config">Configuration (JSON object, no secrets)</label>
+    <textarea id="config" name="config">{}</textarea>
+    <p><button type="submit">Create source</button></p>
+  </form>
+
+  {
+    data && (
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Source</th>
+              <th scope="col">Provider</th>
+              <th scope="col">Type</th>
+              <th scope="col">Validation</th>
+              <th scope="col">Enabled</th>
+              <th scope="col">Last run</th>
+              <th scope="col">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.items.map((source) => (
+              <tr>
+                <td>{source.name}</td>
+                <td>{source.provider}</td>
+                <td>{source.source_type}</td>
+                <td>
+                  <span class={statusClass(source.validation_status)}>
+                    {label(source.validation_status)}
+                  </span>
+                </td>
+                <td>{source.enabled ? 'yes' : 'no'}</td>
+                <td>{formatDateTime(source.last_run_at)}</td>
+                <td>
+                  <form method="post" action="/api/action">
+                    <input type="hidden" name="op" value="source.patch" />
+                    <input type="hidden" name="id" value={source.id} />
+                    <input type="hidden" name="redirect" value={target} />
+                    <div class="checkbox-row">
+                      <input
+                        id={`enabled-${source.id}`}
+                        type="checkbox"
+                        name="enabled"
+                        checked={source.enabled}
+                      />
+                      <label for={`enabled-${source.id}`}>Enabled</label>
+                    </div>
+                    <p>
+                      <button type="submit" class="secondary">
+                        Save
+                      </button>
+                    </p>
+                  </form>
+                  <form method="post" action="/api/action">
+                    <input type="hidden" name="op" value="source.test" />
+                    <input type="hidden" name="id" value={source.id} />
+                    <input type="hidden" name="redirect" value={target} />
+                    <button type="submit" class="secondary">
+                      Test connection
+                    </button>
+                  </form>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )
+  }
+</Layout>

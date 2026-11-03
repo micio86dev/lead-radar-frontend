@@ -1,0 +1,245 @@
+---
+import ConfirmSubmit from '../components/ConfirmSubmit.vue';
+import Layout from '../layouts/Layout.astro';
+import { api } from '../lib/api/client';
+import {
+  costSourceLabel,
+  formatDateTime,
+  formatMoney,
+  formatNumber,
+  label,
+  statusClass,
+} from '../lib/format';
+import { formTarget, load } from '../lib/page';
+
+const target = formTarget(Astro.url);
+const [usage, actors, runs] = await Promise.all([
+  load(() => api.apifyUsage()),
+  load(() => api.actors()),
+  load(() => api.apifyRuns({ per_page: 25 })),
+]);
+const error = usage.error ?? actors.error ?? runs.error;
+---
+
+<Layout title="Apify Control Center">
+  <div class="page-head">
+    <h1>Apify Control Center</h1>
+    <p class="muted small">
+      Actor ids come from you. Nothing is enabled or validated automatically.
+    </p>
+  </div>
+
+  {
+    error && (
+      <p class="notice notice--error" role="alert">
+        {error}
+      </p>
+    )
+  }
+
+  {
+    usage.data && (
+      <section class="grid" aria-label="Apify budget">
+        <div class="card">
+          <p class="muted small">Configured budget</p>
+          <p class="stat">{formatMoney(usage.data.budget_eur, 'EUR')}</p>
+          <p class="muted small">daily ceiling {formatMoney(usage.data.daily_budget_eur, 'EUR')}</p>
+        </div>
+        <div class="card">
+          <p class="muted small">Provider-reported spend</p>
+          <p class="stat">{formatMoney(usage.data.known_actual_usd, 'USD')}</p>
+          <p class="muted small">{costSourceLabel(usage.data.cost_source)}</p>
+        </div>
+        <div class="card">
+          <p class="muted small">Runs / results</p>
+          <p class="stat">{formatNumber(usage.data.runs_total)}</p>
+          <p class="muted small">
+            results {formatNumber(usage.data.results_total)} · errors{' '}
+            {formatNumber(usage.data.errors_total)} · running{' '}
+            {formatNumber(usage.data.runs_running)}
+          </p>
+        </div>
+        <div class="card">
+          <p class="muted small">Kill switch</p>
+          <p class="stat">{usage.data.kill_switch ? 'ENGAGED' : 'off'}</p>
+          <p class="muted small">
+            max run {formatMoney(usage.data.max_run_cost_eur, 'EUR')} · max items{' '}
+            {formatNumber(usage.data.max_items_per_run)}
+          </p>
+        </div>
+      </section>
+    )
+  }
+
+  <h2>Actors</h2>
+  {
+    actors.data && actors.data.items.length === 0 ? (
+      <p class="muted">No Actor registered yet. Add the Actor id you validated.</p>
+    ) : (
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Actor</th>
+              <th scope="col">Id</th>
+              <th scope="col">Validation</th>
+              <th scope="col">Enabled</th>
+              <th scope="col">Max items</th>
+              <th scope="col">Last success</th>
+              <th scope="col">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {(actors.data?.items ?? []).map((actor) => (
+              <tr>
+                <td>{actor.name}</td>
+                <td class="small">{actor.actor_id}</td>
+                <td>
+                  <span class={statusClass(actor.validation_status)}>
+                    {label(actor.validation_status)}
+                  </span>
+                </td>
+                <td>{actor.enabled ? 'yes' : 'no'}</td>
+                <td>{formatNumber(actor.max_items_per_run)}</td>
+                <td>{formatDateTime(actor.last_success_at)}</td>
+                <td>
+                  <form method="post" action="/api/action">
+                    <input type="hidden" name="op" value="apify.actor.patch" />
+                    <input type="hidden" name="id" value={actor.id} />
+                    <input type="hidden" name="redirect" value={target} />
+                    <label for={`validation-${actor.id}`}>Validation</label>
+                    <select id={`validation-${actor.id}`} name="validation_status">
+                      <option value="pending" selected={actor.validation_status === 'pending'}>
+                        pending
+                      </option>
+                      <option value="validated" selected={actor.validation_status === 'validated'}>
+                        validated
+                      </option>
+                      <option value="rejected" selected={actor.validation_status === 'rejected'}>
+                        rejected
+                      </option>
+                    </select>
+                    <div class="checkbox-row">
+                      <input
+                        id={`actor-enabled-${actor.id}`}
+                        type="checkbox"
+                        name="enabled"
+                        checked={actor.enabled}
+                      />
+                      <label for={`actor-enabled-${actor.id}`}>Enabled</label>
+                    </div>
+                    <p>
+                      <button type="submit" class="secondary">
+                        Save Actor
+                      </button>
+                    </p>
+                  </form>
+                  <form method="post" action="/api/action">
+                    <input type="hidden" name="op" value="apify.run.start" />
+                    <input type="hidden" name="actor_registry_id" value={actor.id} />
+                    <input type="hidden" name="redirect" value={target} />
+                    <label for={`items-${actor.id}`}>Items for this run</label>
+                    <input
+                      id={`items-${actor.id}`}
+                      name="items_limit"
+                      type="number"
+                      min="1"
+                      max={actor.max_items_per_run}
+                      value={actor.max_items_per_run}
+                    />
+                    <ConfirmSubmit
+                      label="Queue billable run"
+                      confirmation="I understand this run may spend Apify credit"
+                      client:load
+                    />
+                  </form>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )
+  }
+
+  <form method="post" action="/api/action" class="card">
+    <input type="hidden" name="op" value="apify.actor.create" />
+    <input type="hidden" name="redirect" value={target} />
+    <h2>Register an Actor</h2>
+    <p class="muted small">
+      Registered disabled and pending. Actor ids are never guessed by Lead Radar.
+    </p>
+    <div class="form-row">
+      <div>
+        <label for="actor_id">Actor id</label>
+        <input id="actor_id" name="actor_id" required placeholder="owner/actor-name" />
+      </div>
+      <div>
+        <label for="actor_name">Name</label>
+        <input id="actor_name" name="name" required />
+      </div>
+      <div>
+        <label for="actor_source_type">Source type</label>
+        <input id="actor_source_type" name="source_type" value="community_feed" required />
+      </div>
+      <div>
+        <label for="actor_max_items">Max items per run</label>
+        <input id="actor_max_items" name="max_items_per_run" type="number" min="1" value="25" />
+      </div>
+    </div>
+    <label for="input_template">Input template (JSON object)</label>
+    <textarea id="input_template" name="input_template">{}</textarea>
+    <p><button type="submit">Register Actor</button></p>
+  </form>
+
+  <h2>Recent runs</h2>
+  {
+    runs.data && (
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Run</th>
+              <th scope="col">Actor</th>
+              <th scope="col">Status</th>
+              <th scope="col">Items</th>
+              <th scope="col">Cost (actual)</th>
+              <th scope="col">Cost (estimate)</th>
+              <th scope="col">Started</th>
+              <th scope="col">Error</th>
+              <th scope="col">Cancel</th>
+            </tr>
+          </thead>
+          <tbody>
+            {runs.data.items.map((run) => (
+              <tr>
+                <td class="small">{run.id.slice(0, 8)}</td>
+                <td>{run.actor_name}</td>
+                <td>
+                  <span class={statusClass(run.status)}>{label(run.status)}</span>
+                </td>
+                <td>{formatNumber(run.items_count)}</td>
+                <td>{formatMoney(run.cost_actual_usd, 'USD')}</td>
+                <td>{formatMoney(run.cost_estimate_usd, 'USD')}</td>
+                <td>{formatDateTime(run.started_at)}</td>
+                <td class="small">{run.error ?? '—'}</td>
+                <td>
+                  {['queued', 'running'].includes(run.status) && (
+                    <form method="post" action="/api/action">
+                      <input type="hidden" name="op" value="apify.run.cancel" />
+                      <input type="hidden" name="id" value={run.id} />
+                      <input type="hidden" name="redirect" value={target} />
+                      <button type="submit" class="secondary">
+                        Cancel
+                      </button>
+                    </form>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )
+  }
+</Layout>

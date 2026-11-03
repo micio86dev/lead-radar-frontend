@@ -1,0 +1,13 @@
+---
+interface Props {
+  title: string;
+  hint?: string;
+}
+
+const { title, hint } = Astro.props;
+---
+
+<div class="card">
+  <p><strong>{title}</strong></p>
+  {hint && <p class="muted small">{hint}</p>}
+</div>

@@ -1,0 +1,84 @@
+---
+import '../styles/global.css';
+
+interface Props {
+  title: string;
+}
+
+const { title } = Astro.props;
+const path = Astro.url.pathname;
+const ok = Astro.url.searchParams.get('ok');
+const error = Astro.url.searchParams.get('error');
+
+const links: { href: string; label: string }[] = [
+  { href: '/', label: 'Dashboard' },
+  { href: '/opportunities', label: 'Opportunities' },
+  { href: '/comments', label: 'Comment Studio' },
+  { href: '/review', label: 'Review Queue' },
+  { href: '/search-profiles', label: 'Search Profiles' },
+  { href: '/communities', label: 'Communities' },
+  { href: '/sources', label: 'Sources' },
+  { href: '/apify', label: 'Apify' },
+  { href: '/providers', label: 'AI Providers' },
+  { href: '/benchmarks', label: 'Benchmarks' },
+  { href: '/usage', label: 'Usage & Costs' },
+  { href: '/settings', label: 'Settings' },
+];
+
+const isActive = (href: string): boolean =>
+  href === '/' ? path === '/' : path === href || path.startsWith(`${href}/`);
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title} · Lead Radar</title>
+    <meta name="description" content="Lead Radar: qualified B2B opportunities with human review." />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="app-header">
+      <div class="app-header__inner">
+        <a class="brand" href="/">Lead Radar <span>· opportunity intelligence</span></a>
+        <nav aria-label="Main">
+          <ul class="nav">
+            {
+              links.map((link) => (
+                <li>
+                  <a href={link.href} aria-current={isActive(link.href) ? 'page' : undefined}>
+                    {link.label}
+                  </a>
+                </li>
+              ))
+            }
+          </ul>
+        </nav>
+      </div>
+    </header>
+    <main id="main">
+      {
+        ok && (
+          <p class="notice notice--ok" role="status">
+            {ok}
+          </p>
+        )
+      }
+      {
+        error && (
+          <p class="notice notice--error" role="alert">
+            {error}
+          </p>
+        )
+      }
+      <slot />
+    </main>
+    <footer class="app-header">
+      <div class="app-header__inner small muted">
+        <span>Lead Radar · human-approved engagement only, no automatic publication</span>
+        <span>API: {import.meta.env.PUBLIC_API_BASE_URL ?? 'http://localhost:8080'}</span>
+      </div>
+    </footer>
+  </body>
+</html>

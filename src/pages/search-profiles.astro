@@ -1,0 +1,113 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { api } from '../lib/api/client';
+import { label } from '../lib/format';
+import { formTarget, load } from '../lib/page';
+
+const target = formTarget(Astro.url);
+const { data, error } = await load(() => api.profiles());
+const verticals = [
+  'hr_recruiting',
+  'international_meetings',
+  'conferences_webinars',
+  'customer_support',
+  'tourism_hospitality',
+];
+---
+
+<Layout title="Search Profiles">
+  <div class="page-head">
+    <h1>Search Profiles</h1>
+    <p class="muted small">Keywords and negative keywords drive the pre-decision filter.</p>
+  </div>
+
+  {
+    error && (
+      <p class="notice notice--error" role="alert">
+        {error}
+      </p>
+    )
+  }
+
+  <form method="post" action="/api/action" class="card">
+    <input type="hidden" name="op" value="profile.create" />
+    <input type="hidden" name="redirect" value={target} />
+    <h2>New profile</h2>
+    <div class="form-row">
+      <div>
+        <label for="name">Name</label>
+        <input id="name" name="name" required />
+      </div>
+      <div>
+        <label for="vertical">Vertical</label>
+        <select id="vertical" name="vertical">
+          {verticals.map((value) => <option value={value}>{label(value)}</option>)}
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div>
+        <label for="keywords">Keywords (one per line)</label>
+        <textarea id="keywords" name="keywords"></textarea>
+      </div>
+      <div>
+        <label for="negative_keywords">Negative keywords (one per line)</label>
+        <textarea id="negative_keywords" name="negative_keywords"></textarea>
+      </div>
+    </div>
+    <button type="submit">Create profile</button>
+  </form>
+
+  {
+    data?.items.map((profile) => (
+      <section class="card" aria-label={`Profile ${profile.name}`}>
+        <div class="page-head">
+          <h2 style="margin:0">{profile.name}</h2>
+          <span class="muted small">
+            {label(profile.vertical)} · {profile.enabled ? 'enabled' : 'disabled'} ·{' '}
+            {profile.keywords.length} keywords · {profile.negative_keywords.length} negative
+          </span>
+        </div>
+        <form method="post" action="/api/action">
+          <input type="hidden" name="op" value="profile.patch" />
+          <input type="hidden" name="id" value={profile.id} />
+          <input type="hidden" name="redirect" value={target} />
+          <div class="form-row">
+            <div>
+              <label for={`keywords-${profile.id}`}>Keywords</label>
+              <textarea id={`keywords-${profile.id}`} name="keywords">
+                {profile.keywords.join('\n')}
+              </textarea>
+            </div>
+            <div>
+              <label for={`negatives-${profile.id}`}>Negative keywords</label>
+              <textarea id={`negatives-${profile.id}`} name="negative_keywords">
+                {profile.negative_keywords.join('\n')}
+              </textarea>
+            </div>
+          </div>
+          <div class="checkbox-row">
+            <input
+              id={`enabled-${profile.id}`}
+              type="checkbox"
+              name="enabled"
+              checked={profile.enabled}
+            />
+            <label for={`enabled-${profile.id}`}>Enabled</label>
+          </div>
+          <p class="actions">
+            <button type="submit">Save profile</button>
+          </p>
+        </form>
+        <form method="post" action="/api/action">
+          <input type="hidden" name="op" value="profile.delete" />
+          <input type="hidden" name="id" value={profile.id} />
+          <input type="hidden" name="redirect" value={target} />
+          <button type="submit" class="secondary">
+            Delete profile
+          </button>
+        </form>
+      </section>
+    ))
+  }
+</Layout>
