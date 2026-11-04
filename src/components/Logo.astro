@@ -1,0 +1,40 @@
+---
+/**
+ * The Lead Radar mark: a quarter radar sweep.
+ *
+ * Two concentric arcs leave an origin dot and end at a signal dot, so the shape reads as "signal
+ * detected" at 16px and stays legible in one colour. It is drawn in `currentColor` on purpose —
+ * the accent comes from the surrounding text colour, and `forced-colors` modes keep the shape.
+ *
+ * The mark is decorative: the product name next to it is real text, so nothing depends on the
+ * image. Callers that render the mark alone must supply the accessible name.
+ */
+interface Props {
+  /** Edge length in CSS pixels. The geometry is designed on a 32×32 grid. */
+  size?: number;
+  class?: string;
+}
+
+const { size = 28, class: className } = Astro.props;
+---
+
+<svg
+  class={className}
+  width={size}
+  height={size}
+  viewBox="0 0 32 32"
+  fill="none"
+  aria-hidden="true"
+  focusable="false"
+>
+  <path
+    d="M7 25A18 18 0 0 1 25 7"
+    stroke="currentColor"
+    stroke-width="2.4"
+    stroke-linecap="round"
+    opacity="0.45"></path>
+  <path d="M7 25a11 11 0 0 1 11-11" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"
+  ></path>
+  <circle cx="7" cy="25" r="2.6" fill="currentColor"></circle>
+  <circle cx="25.5" cy="6.5" r="2.9" fill="currentColor"></circle>
+</svg>

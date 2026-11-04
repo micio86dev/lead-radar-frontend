@@ -1,8 +1,20 @@
 ---
+import Logo from '../components/Logo.astro';
+import Notice from '../components/ui/Notice.astro';
 import '../styles/global.css';
 
 interface Props {
   title: string;
+}
+
+interface NavLink {
+  href: string;
+  label: string;
+}
+
+interface NavGroup {
+  label: string;
+  links: NavLink[];
 }
 
 const { title } = Astro.props;
@@ -10,26 +22,53 @@ const path = Astro.url.pathname;
 const ok = Astro.url.searchParams.get('ok');
 const error = Astro.url.searchParams.get('error');
 
-const links: { href: string; label: string }[] = [
-  { href: '/', label: 'Dashboard' },
-  { href: '/reply-queue', label: 'Reply queue' },
-  { href: '/follow-ups', label: 'Follow-ups' },
-  { href: '/opportunities', label: 'Opportunities' },
-  { href: '/comments', label: 'Comments' },
-  { href: '/review', label: 'Review' },
-  { href: '/search-profiles', label: 'Profiles' },
-  { href: '/communities', label: 'Communities' },
-  { href: '/sources', label: 'Sources' },
-  { href: '/import', label: 'Import' },
-  { href: '/apify', label: 'Apify' },
-  { href: '/providers', label: 'Providers' },
-  { href: '/benchmarks', label: 'Benchmarks' },
-  { href: '/usage', label: 'Usage' },
-  { href: '/settings', label: 'Settings' },
+/**
+ * Navigation is grouped by the job the operator is doing, not by file order: an inbox to triage,
+ * a reply workflow, the sources that feed it, and the system panels. Every route in the app is
+ * listed exactly once, so the shell stays the only place that knows the map.
+ */
+const groups: NavGroup[] = [
+  {
+    label: 'Inbox',
+    links: [
+      { href: '/', label: 'Dashboard' },
+      { href: '/opportunities', label: 'Opportunities' },
+      { href: '/comments', label: 'Comments' },
+    ],
+  },
+  {
+    label: 'Reply',
+    links: [
+      { href: '/reply-queue', label: 'Reply queue' },
+      { href: '/follow-ups', label: 'Follow-ups' },
+      { href: '/review', label: 'Review' },
+    ],
+  },
+  {
+    label: 'Sources',
+    links: [
+      { href: '/search-profiles', label: 'Profiles' },
+      { href: '/communities', label: 'Communities' },
+      { href: '/sources', label: 'Sources' },
+      { href: '/import', label: 'Import' },
+      { href: '/apify', label: 'Apify' },
+    ],
+  },
+  {
+    label: 'System',
+    links: [
+      { href: '/providers', label: 'Providers' },
+      { href: '/benchmarks', label: 'Benchmarks' },
+      { href: '/usage', label: 'Usage' },
+      { href: '/settings', label: 'Settings' },
+    ],
+  },
 ];
 
 const isActive = (href: string): boolean =>
   href === '/' ? path === '/' : path === href || path.startsWith(`${href}/`);
+
+const apiBase = import.meta.env.PUBLIC_API_BASE_URL ?? 'http://localhost:8080';
 ---
 
 <!doctype html>
@@ -39,49 +78,86 @@ const isActive = (href: string): boolean =>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{title} · Lead Radar</title>
     <meta name="description" content="Lead Radar: qualified B2B opportunities with human review." />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <meta name="theme-color" content="#1f5fd0" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0b1119" media="(prefers-color-scheme: dark)" />
   </head>
-  <body>
+  <body class="min-h-screen">
     <a class="skip-link" href="#main">Skip to content</a>
-    <header class="app-header">
-      <div class="app-header__inner">
-        <a class="brand" href="/">Lead Radar <span>· opportunity intelligence</span></a>
-        <nav aria-label="Main">
-          <ul class="nav">
+
+    <div class="lg:grid lg:min-h-screen lg:grid-cols-[17rem_minmax(0,1fr)]">
+      <!--
+        One navigation, two shapes: a sticky vertical menu from 1024px and a scrollable strip
+        below it. No second copy and no JavaScript drawer, so keyboard order stays the same at
+        every width: skip link, then the brand, then the routes.
+      -->
+      <aside
+        class="border-b border-line bg-raised lg:sticky lg:top-0 lg:h-screen lg:overflow-y-auto lg:border-r lg:border-b-0"
+        aria-label="Sidebar"
+      >
+        <div class="px-3 pt-3 lg:pt-5">
+          <a
+            class="inline-flex items-center gap-2.5 rounded-control px-1 py-1 hover:bg-sunken"
+            href="/"
+          >
+            <Logo class="text-accent" size={26} />
+            <span class="flex flex-col leading-tight">
+              <span class="text-[0.95rem] font-bold tracking-tight text-ink">Lead Radar</span>
+              <span class="text-[0.68rem] font-medium text-ink-muted">
+                opportunity intelligence
+              </span>
+            </span>
+          </a>
+        </div>
+
+        <nav aria-label="Main" class="px-2 pt-2 pb-1 lg:pt-5 lg:pb-6">
+          <ul class="flex gap-4 overflow-x-auto lg:block lg:space-y-4 lg:overflow-visible">
             {
-              links.map((link) => (
-                <li>
-                  <a href={link.href} aria-current={isActive(link.href) ? 'page' : undefined}>
-                    {link.label}
-                  </a>
+              groups.map((group) => (
+                <li class="shrink-0 lg:block">
+                  <p class="hidden px-2 pb-1 text-[0.66rem] font-semibold tracking-wider text-ink-muted uppercase lg:block">
+                    {group.label}
+                  </p>
+                  <ul class="flex gap-1 lg:block lg:space-y-0.5">
+                    {group.links.map((link) => (
+                      <li>
+                        <a
+                          href={link.href}
+                          aria-current={isActive(link.href) ? 'page' : undefined}
+                          class="flex items-center rounded-control px-2.5 py-1.5 text-sm whitespace-nowrap text-ink-muted hover:bg-sunken hover:text-ink aria-[current=page]:bg-accent-soft aria-[current=page]:font-semibold aria-[current=page]:text-accent-strong"
+                        >
+                          {link.label}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
                 </li>
               ))
             }
           </ul>
         </nav>
+      </aside>
+
+      <div class="flex min-h-screen flex-col">
+        <main id="main" class="mx-auto w-full max-w-[80rem] flex-1 px-4 py-6 lg:px-8 lg:py-8">
+          {ok && <Notice tone="ok">{ok}</Notice>}
+          {
+            error && (
+              <Notice tone="error" role="alert">
+                {error}
+              </Notice>
+            )
+          }
+          <slot />
+        </main>
+
+        <footer class="border-t border-line px-4 py-4 text-xs text-ink-muted lg:px-8">
+          <div class="mx-auto flex w-full max-w-[80rem] flex-wrap justify-between gap-2">
+            <span> Lead Radar · human-approved engagement only, no automatic publication </span>
+            <span>API: {apiBase}</span>
+          </div>
+        </footer>
       </div>
-    </header>
-    <main id="main">
-      {
-        ok && (
-          <p class="notice notice--ok" role="status">
-            {ok}
-          </p>
-        )
-      }
-      {
-        error && (
-          <p class="notice notice--error" role="alert">
-            {error}
-          </p>
-        )
-      }
-      <slot />
-    </main>
-    <footer class="app-header">
-      <div class="app-header__inner small muted">
-        <span>Lead Radar · human-approved engagement only, no automatic publication</span>
-        <span>API: {import.meta.env.PUBLIC_API_BASE_URL ?? 'http://localhost:8080'}</span>
-      </div>
-    </footer>
+    </div>
   </body>
 </html>

@@ -1,13 +1,21 @@
 ---
+/**
+ * Empty state primitive: says what is missing and what to do next. The optional slot holds the
+ * action, so an empty screen is never a dead end.
+ */
 interface Props {
   title: string;
   hint?: string;
+  class?: string;
 }
 
-const { title, hint } = Astro.props;
+const { title, hint, class: className } = Astro.props;
 ---
 
-<div class="card">
-  <p><strong>{title}</strong></p>
-  {hint && <p class="muted small">{hint}</p>}
+<div
+  class:list={['rounded-panel border border-dashed border-line bg-raised/60 px-4 py-6', className]}
+>
+  <p class="font-semibold text-ink">{title}</p>
+  {hint && <p class="mt-1 text-sm text-ink-muted">{hint}</p>}
+  <slot />
 </div>

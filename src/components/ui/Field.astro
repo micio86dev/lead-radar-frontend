@@ -1,0 +1,46 @@
+---
+/**
+ * Field primitive: label, control, hint and error in the order a screen reader reads them.
+ *
+ * The hint and the error are rendered with deterministic ids (`<id>-hint`, `<id>-error`) so the
+ * control inside the slot can point at them:
+ *
+ *   <Field for="vertical" label="Vertical" hint="Filters the inbox." />
+ *     <select id="vertical" name="vertical" aria-describedby="vertical-hint">…</select>
+ *   </Field>
+ */
+interface Props {
+  /** Id of the control inside the slot; the label points at it. */
+  for: string;
+  label: string;
+  hint?: string;
+  error?: string;
+  required?: boolean;
+  class?: string;
+}
+
+const { for: id, label, hint, error, required = false, class: className } = Astro.props;
+---
+
+<div class:list={['mb-3', className]}>
+  <label for={id}>
+    {label}
+    {required && <span aria-hidden="true"> *</span>}
+    {required && <span class="sr-only"> (required)</span>}
+  </label>
+  <slot />
+  {
+    hint && (
+      <p id={`${id}-hint`} class="mt-1 text-xs text-ink-muted">
+        {hint}
+      </p>
+    )
+  }
+  {
+    error && (
+      <p id={`${id}-error`} class="mt-1 text-xs font-semibold text-bad">
+        {error}
+      </p>
+    )
+  }
+</div>

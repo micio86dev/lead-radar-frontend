@@ -1,0 +1,32 @@
+---
+import { cva, type VariantProps } from 'class-variance-authority';
+import { cn } from '../../lib/cn';
+
+/**
+ * Notice primitive for inline feedback. The role is explicit at the call site: `status` for
+ * confirmations, `alert` for failures, so a screen reader announces the right thing and only when
+ * the message appears.
+ */
+const notice = cva('mb-4 rounded-panel border px-4 py-3 text-sm', {
+  variants: {
+    tone: {
+      info: 'border-line bg-sunken text-ink',
+      ok: 'border-good/30 bg-good-soft text-good',
+      error: 'border-bad/30 bg-bad-soft text-bad',
+      warn: 'border-warn/30 bg-warn-soft text-warn',
+    },
+  },
+  defaultVariants: { tone: 'info' },
+});
+
+type Props = VariantProps<typeof notice> & {
+  role?: 'status' | 'alert' | 'note';
+  class?: string;
+};
+
+const { tone, role = 'status', class: className } = Astro.props;
+---
+
+<p class={cn(notice({ tone }), className)} role={role === 'note' ? undefined : role}>
+  <slot />
+</p>

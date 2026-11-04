@@ -1,0 +1,37 @@
+---
+import { cva, type VariantProps } from 'class-variance-authority';
+import { cn } from '../../lib/cn';
+
+/**
+ * Badge primitive. Every tone keeps at least 4.5:1 contrast against its own soft background, and
+ * each one also changes the text, so the tone is never the only carrier of meaning.
+ */
+const badge = cva(
+  'inline-flex items-center gap-1 rounded-full border border-transparent px-2 py-0.5 text-[0.72rem] font-semibold whitespace-nowrap',
+  {
+    variants: {
+      tone: {
+        hot: 'bg-bad-soft text-bad',
+        warm: 'bg-warn-soft text-warn',
+        potential: 'bg-accent-soft text-accent-strong',
+        low: 'bg-sunken text-ink-muted',
+        good: 'bg-good-soft text-good',
+        bad: 'bg-bad-soft text-bad',
+        muted: 'bg-sunken text-ink-muted',
+        accent: 'bg-accent text-accent-ink',
+      },
+    },
+    defaultVariants: { tone: 'muted' },
+  },
+);
+
+export type BadgeTone = NonNullable<VariantProps<typeof badge>['tone']>;
+
+interface Props extends VariantProps<typeof badge> {
+  class?: string;
+}
+
+const { tone, class: className } = Astro.props;
+---
+
+<span class={cn(badge({ tone }), className)}><slot /></span>
