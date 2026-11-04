@@ -23,6 +23,17 @@ type ScoreTone = (typeof scoreTones)[number];
 
 const scoreTone = (category: string | null): ScoreTone =>
   scoreTones.includes(category as ScoreTone) ? (category as ScoreTone) : 'low';
+
+/** A row of the two distribution panels: a name, a count and its share of the biggest row. */
+interface Slice {
+  name: string;
+  count: number;
+}
+
+const slices = (rows: { count: number }[]): number => Math.max(1, ...rows.map((row) => row.count));
+
+const share = (count: number, max: number): string =>
+  `${Math.max(2, Math.round((count / max) * 100))}%`;
 ---
 
 <Layout title="Dashboard">
@@ -52,57 +63,75 @@ const scoreTone = (category: string | null): ScoreTone =>
     data && (
       <>
         <section class="grid grid--stats" aria-label="Opportunity totals">
-          <Card>
-            <p class="muted small">Opportunities</p>
-            <p class="stat">{formatNumber(data.totals.opportunities)}</p>
-            <p class="muted small">
-              new in the last 24h: {formatNumber(data.totals.new_opportunities)}
+          <div class="kpi kpi--accent">
+            <p class="kpi__label">
+              <span class="kpi__dot" />
+              Opportunities
             </p>
-          </Card>
-          <Card>
-            <p class="muted small">HOT</p>
-            <p class="stat">{formatNumber(data.totals.hot)}</p>
-            <p class="muted small">score 80–100</p>
-          </Card>
-          <Card>
-            <p class="muted small">WARM</p>
-            <p class="stat">{formatNumber(data.totals.warm)}</p>
-            <p class="muted small">score 60–79</p>
-          </Card>
-          <Card>
-            <p class="muted small">POTENTIAL</p>
-            <p class="stat">{formatNumber(data.totals.potential)}</p>
-            <p class="muted small">score 40–59</p>
-          </Card>
-          <Card>
-            <p class="muted small">LOW</p>
-            <p class="stat">{formatNumber(data.totals.low)}</p>
-            <p class="muted small">score 0–39</p>
-          </Card>
+            <p class="kpi__value">{formatNumber(data.totals.opportunities)}</p>
+            <p class="kpi__hint">
+              {formatNumber(data.totals.new_opportunities)} new in the last 24h
+            </p>
+          </div>
+          <div class="kpi kpi--hot">
+            <p class="kpi__label">
+              <span class="kpi__dot" />
+              Hot
+            </p>
+            <p class="kpi__value">{formatNumber(data.totals.hot)}</p>
+            <p class="kpi__hint">score 80–100</p>
+          </div>
+          <div class="kpi kpi--warm">
+            <p class="kpi__label">
+              <span class="kpi__dot" />
+              Warm
+            </p>
+            <p class="kpi__value">{formatNumber(data.totals.warm)}</p>
+            <p class="kpi__hint">score 60–79</p>
+          </div>
+          <div class="kpi kpi--potential">
+            <p class="kpi__label">
+              <span class="kpi__dot" />
+              Potential
+            </p>
+            <p class="kpi__value">{formatNumber(data.totals.potential)}</p>
+            <p class="kpi__hint">score 40–59</p>
+          </div>
+          <div class="kpi kpi--low">
+            <p class="kpi__label">
+              <span class="kpi__dot" />
+              Low
+            </p>
+            <p class="kpi__value">{formatNumber(data.totals.low)}</p>
+            <p class="kpi__hint">score 0–39</p>
+          </div>
         </section>
 
-        <div class="grid">
+        <div class="grid lg:grid-cols-2">
           <Card label="Leads by vertical">
             <h2>By vertical</h2>
             {data.by_vertical.length === 0 ? (
               <p class="muted small">No leads yet.</p>
             ) : (
-              <table>
-                <thead>
-                  <tr>
-                    <th scope="col">Vertical</th>
-                    <th scope="col">Leads</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.by_vertical.map((row) => (
-                    <tr>
-                      <td>{label(row.vertical)}</td>
-                      <td>{formatNumber(row.count)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <ul class="m-0 list-none space-y-2.5 p-0">
+                {data.by_vertical.map((row) => (
+                  <li class="bar bar--potential">
+                    <span
+                      class="w-44 shrink-0 truncate text-sm text-ink"
+                      title={label(row.vertical)}
+                    >
+                      {label(row.vertical)}
+                    </span>
+                    <span class="bar__track">
+                      <span
+                        class="bar__fill"
+                        style={`--bar-value:${share(row.count, slices(data.by_vertical))}`}
+                      />
+                    </span>
+                    <span class="bar__value">{formatNumber(row.count)}</span>
+                  </li>
+                ))}
+              </ul>
             )}
           </Card>
 
@@ -111,22 +140,22 @@ const scoreTone = (category: string | null): ScoreTone =>
             {data.by_intent.length === 0 ? (
               <p class="muted small">No leads yet.</p>
             ) : (
-              <table>
-                <thead>
-                  <tr>
-                    <th scope="col">Intent</th>
-                    <th scope="col">Leads</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.by_intent.map((row) => (
-                    <tr>
-                      <td>{label(row.intent)}</td>
-                      <td>{formatNumber(row.count)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <ul class="m-0 list-none space-y-2.5 p-0">
+                {data.by_intent.map((row) => (
+                  <li class="bar">
+                    <span class="w-44 shrink-0 truncate text-sm text-ink" title={label(row.intent)}>
+                      {label(row.intent)}
+                    </span>
+                    <span class="bar__track">
+                      <span
+                        class="bar__fill"
+                        style={`--bar-value:${share(row.count, slices(data.by_intent))}`}
+                      />
+                    </span>
+                    <span class="bar__value">{formatNumber(row.count)}</span>
+                  </li>
+                ))}
+              </ul>
             )}
           </Card>
 
@@ -212,7 +241,10 @@ const scoreTone = (category: string | null): ScoreTone =>
           </Card>
         </div>
 
-        <h2>Provider status</h2>
+        <div class="section-head">
+          <h2>Provider status</h2>
+          <p>live state of the configured providers</p>{' '}
+        </div>
         <div class="table-wrap">
           <table>
             <thead>
@@ -220,7 +252,9 @@ const scoreTone = (category: string | null): ScoreTone =>
                 <th scope="col">Provider</th>
                 <th scope="col">State</th>
                 <th scope="col">Model</th>
-                <th scope="col">Requests</th>
+                <th scope="col" class="numeric">
+                  Requests
+                </th>
                 <th scope="col">Last request</th>
                 <th scope="col">Last error</th>
               </tr>
@@ -242,7 +276,10 @@ const scoreTone = (category: string | null): ScoreTone =>
           </table>
         </div>
 
-        <h2>Recent discoveries</h2>
+        <div class="section-head">
+          <h2>Recent discoveries</h2>
+          <p>newest leads first</p>{' '}
+        </div>
         {data.recent_opportunities.length === 0 ? (
           <EmptyState
             title="No opportunities yet"
@@ -274,7 +311,7 @@ const scoreTone = (category: string | null): ScoreTone =>
                       <Badge tone={scoreTone(item.score_category)}>
                         {label(item.score_category)}
                       </Badge>
-                      <div class="muted small">{item.score ?? 'unknown'}</div>
+                      <div class="muted small tabular-nums">{item.score ?? 'unknown'}</div>
                     </td>
                     <td>{label(item.qualification_status)}</td>
                     <td>{formatDateTime(item.published_at)}</td>
@@ -285,26 +322,37 @@ const scoreTone = (category: string | null): ScoreTone =>
           </div>
         )}
 
-        <h2>Provider costs (30 days)</h2>
+        <div class="section-head">
+          <h2>Provider costs (30 days)</h2>
+          <p>actual and estimated spend per provider</p>{' '}
+        </div>
         <div class="table-wrap">
           <table>
             <thead>
               <tr>
                 <th scope="col">Provider</th>
-                <th scope="col">Requests</th>
-                <th scope="col">Actual</th>
-                <th scope="col">Estimated</th>
-                <th scope="col">Unknown cost requests</th>
+                <th scope="col" class="numeric">
+                  Requests
+                </th>
+                <th scope="col" class="numeric">
+                  Actual
+                </th>
+                <th scope="col" class="numeric">
+                  Estimated
+                </th>
+                <th scope="col" class="numeric">
+                  Unknown cost requests
+                </th>
               </tr>
             </thead>
             <tbody>
               {data.costs.map((cost) => (
                 <tr>
                   <td>{cost.provider}</td>
-                  <td>{formatNumber(cost.requests)}</td>
-                  <td>{formatMoney(cost.actual_cost_usd, cost.currency)}</td>
-                  <td>{formatMoney(cost.estimated_cost_usd, cost.currency)}</td>
-                  <td>{formatNumber(cost.unknown_cost_requests)}</td>
+                  <td class="numeric">{formatNumber(cost.requests)}</td>
+                  <td class="numeric">{formatMoney(cost.actual_cost_usd, cost.currency)}</td>
+                  <td class="numeric">{formatMoney(cost.estimated_cost_usd, cost.currency)}</td>
+                  <td class="numeric">{formatNumber(cost.unknown_cost_requests)}</td>
                 </tr>
               ))}
             </tbody>

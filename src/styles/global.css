@@ -45,6 +45,18 @@
 
   --color-focus: #0b57d0;
 
+  /* Category tones: one variable per score band, so a badge, a KPI stripe and an inline bar read
+     from the same source and the dark scheme only has to override these. */
+  --color-tone-hot: var(--color-bad);
+  --color-tone-hot-soft: var(--color-bad-soft);
+  --color-tone-warm: var(--color-warn);
+  --color-tone-warm-soft: var(--color-warn-soft);
+  --color-tone-potential: var(--color-accent);
+  --color-tone-potential-soft: var(--color-accent-soft);
+  --color-tone-low: var(--color-ink-muted);
+  --color-tone-low-soft: var(--color-sunken);
+  --color-track: #e8ebf0;
+
   --radius-control: 0.5rem;
   --radius-panel: 0.875rem;
 
@@ -83,6 +95,7 @@
     --color-bad-soft: #2c1416;
 
     --color-focus: #7db3ff;
+    --color-track: #1e2938;
 
     --shadow-panel: 0 1px 2px rgb(0 0 0 / 0.4), 0 1px 3px rgb(0 0 0 / 0.3);
     --shadow-raised: 0 8px 24px rgb(0 0 0 / 0.5);
@@ -201,7 +214,9 @@
   }
 
   .grid {
-    @apply mb-4 grid grid-cols-[repeat(auto-fit,minmax(240px,1fr))] gap-4;
+    /* items-start: a card hugs its content instead of stretching to the tallest sibling, which used
+       to leave a tall empty band under the short panels. */
+    @apply mb-4 grid grid-cols-[repeat(auto-fit,minmax(240px,1fr))] items-start gap-4;
   }
 
   .grid--stats {
@@ -213,7 +228,100 @@
   }
 
   .stat {
-    @apply my-0.5 text-2xl font-bold tabular-nums;
+    @apply my-0.5 text-2xl font-bold tabular-nums text-ink;
+  }
+
+  /* --- KPI card: one number, one label, one context line, one tone stripe ------------------- */
+
+  .kpi {
+    @apply relative mb-0 overflow-hidden rounded-panel border border-line bg-raised p-4 shadow-panel;
+  }
+
+  .kpi::before {
+    content: '';
+    @apply absolute inset-y-0 left-0 w-1;
+    background: var(--kpi-tone, var(--color-line));
+  }
+
+  .kpi__label {
+    @apply flex items-center gap-1.5 text-[0.7rem] font-semibold tracking-wider text-ink-muted uppercase;
+  }
+
+  .kpi__dot {
+    @apply inline-block size-1.5 rounded-full;
+    background: var(--kpi-tone, var(--color-ink-muted));
+  }
+
+  .kpi__value {
+    @apply mt-1.5 text-[1.75rem] leading-none font-bold tabular-nums text-ink;
+  }
+
+  .kpi__hint {
+    @apply mt-1.5 text-xs text-ink-muted;
+  }
+
+  .kpi--hot {
+    --kpi-tone: var(--color-tone-hot);
+  }
+  .kpi--warm {
+    --kpi-tone: var(--color-tone-warm);
+  }
+  .kpi--potential {
+    --kpi-tone: var(--color-tone-potential);
+  }
+  .kpi--low {
+    --kpi-tone: var(--color-tone-low);
+  }
+  .kpi--accent {
+    --kpi-tone: var(--color-accent);
+  }
+
+  /* --- inline bar: a value as a share of the column's own maximum ------------------------- */
+
+  .bar {
+    @apply flex items-center gap-2.5;
+  }
+
+  .bar__track {
+    @apply h-1.5 min-w-8 flex-1 overflow-hidden rounded-full;
+    background: var(--color-track);
+  }
+
+  .bar__fill {
+    @apply block h-full rounded-full;
+    width: var(--bar-value, 0%);
+    background: var(--bar-tone, var(--color-accent));
+  }
+
+  .bar__value {
+    @apply w-10 shrink-0 text-right text-xs font-semibold tabular-nums text-ink;
+  }
+
+  .bar--hot {
+    --bar-tone: var(--color-tone-hot);
+  }
+  .bar--warm {
+    --bar-tone: var(--color-tone-warm);
+  }
+  .bar--potential {
+    --bar-tone: var(--color-tone-potential);
+  }
+  .bar--low {
+    --bar-tone: var(--color-tone-low);
+  }
+
+  /* --- section heading with a rule --------------------------------------------------------- */
+
+  .section-head {
+    @apply mt-8 mb-3 flex items-baseline justify-between gap-3 border-b border-line pb-2;
+  }
+
+  .section-head h2 {
+    @apply m-0 text-base font-semibold tracking-tight text-ink;
+  }
+
+  .section-head p {
+    @apply m-0 text-xs text-ink-muted;
   }
 
   .actions {
@@ -282,6 +390,11 @@
 
   td {
     @apply border-b border-line px-3 py-2 align-top;
+  }
+
+  td.numeric,
+  th.numeric {
+    @apply text-right tabular-nums;
   }
 
   tbody tr:last-child td {
