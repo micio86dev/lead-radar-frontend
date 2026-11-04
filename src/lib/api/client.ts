@@ -156,11 +156,11 @@ export const api = {
       { method: 'POST', body },
     ),
 
-  prepareDrafts: (limit: number) =>
-    request<{ queued: number; job_ids: string[] }>('/api/v1/reply-console/prepare', {
-      method: 'POST',
-      body: { limit },
-    }),
+  prepareDrafts: (limit: number, auto = false) =>
+    request<{ queued: number; job_ids: string[]; cooldown_minutes?: number }>(
+      '/api/v1/reply-console/prepare',
+      { method: 'POST', body: { limit, auto } },
+    ),
 
   comments: (params: Record<string, QueryValue>) =>
     request<Paginated<CommentSummary>>(`/api/v1/comments${buildQuery(params)}`),

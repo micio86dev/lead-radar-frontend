@@ -23,7 +23,7 @@ test('opportunities inbox is reachable and shows either rows or an empty state',
 });
 
 test('the reply console loads with a composer or an explicit empty state', async ({ page }) => {
-  await page.goto('/reply');
+  await page.goto('/reply-queue');
   await expect(page.getByRole('heading', { name: 'Reply' })).toBeVisible();
   await expect(
     page

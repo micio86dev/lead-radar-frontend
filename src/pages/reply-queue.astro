@@ -1,0 +1,77 @@
+---
+import ReplyConsole from '../components/vue/ReplyConsole.vue';
+import EmptyState from '../components/EmptyState.astro';
+import Layout from '../layouts/Layout.astro';
+import { api } from '../lib/api/client';
+import { load } from '../lib/page';
+
+const { data, error } = await load(() => api.replyConsole(25));
+let items = data?.items ?? [];
+let preparing = 0;
+let cooldown = false;
+
+// Keep the queue ready, the way Bazzly does it: when fewer than five leads have drafts, ask the worker
+// for up to three more. The endpoint rate limits automatic preparation, so a refresh cannot queue paid
+// generation repeatedly; the explicit button always works.
+if (data && data.stats.ready < 5 && data.stats.needs_drafts > 0) {
+  const prepared = await load(() => api.prepareDrafts(3, true));
+  preparing = Number(prepared.data?.queued ?? 0);
+  cooldown = Boolean(prepared.data?.cooldown_minutes);
+}
+---
+
+<Layout title="Reply queue">
+  <div class="page-head">
+    <h1>Reply queue</h1>
+    <p class="muted small">
+      One screen: draft, edit, copy, post on Reddit, record. Nothing is published by this system.
+    </p>
+  </div>
+
+  {
+    error && (
+      <p class="notice notice--error" role="alert">
+        {error}
+      </p>
+    )
+  }
+
+  {
+    data && (
+      <p class="muted small">
+        {data.stats.ready} ready · {data.stats.needs_drafts} waiting for drafts ·{' '}
+        {data.stats.returned} in this queue. Qualified leads come first, then the ones flagged for
+        review.
+      </p>
+    )
+  }
+
+  {
+    preparing > 0 && (
+      <p class="notice notice--info" role="status">
+        Preparing {preparing} draft{preparing === 1 ? '' : 's'} in the background — reload in a few
+        seconds.
+      </p>
+    )
+  }
+
+  {
+    cooldown && preparing === 0 && (
+      <p class="muted small">
+        Automatic preparation paused for a few minutes; use “Generate drafts” on a card when you
+        need one now.
+      </p>
+    )
+  }
+
+  {
+    items.length === 0 ? (
+      <EmptyState
+        title="The reply queue is empty"
+        hint="Import a conversation or run a discovery pass; leads that pass the gates appear here."
+      />
+    ) : (
+      <ReplyConsole items={items} client:load />
+    )
+  }
+</Layout>
