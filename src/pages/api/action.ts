@@ -408,8 +408,12 @@ export const POST: APIRoute = async ({ request }) => {
         message = 'project deleted';
         break;
       case 'project.match': {
+        // Reading pages and asking a model is slow work: the default 15s budget would report a
+        // timeout for an analysis that is still running.
         const result = await api.post<{ candidates: number; matched: number }>(
           `/api/v1/projects/${encodeURIComponent(body.text('id') ?? '')}/match-communities`,
+          {},
+          120_000,
         );
         message = `analysis ranked ${result.matched} of ${result.candidates} communities`;
         break;

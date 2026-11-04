@@ -133,18 +133,28 @@ test('the search panel explains how a search starts and needs an explicit confir
   await expect(first.getByRole('button', { name: /start search/i })).toBeEnabled();
 });
 
-test('projects page carries the product context the prompts use', async ({ page }) => {
+test('a project can be created and becomes the product context the prompts use', async ({
+  page,
+}) => {
   await page.goto('/projects');
   await expect(page.getByRole('heading', { name: 'Projects', level: 1 })).toBeVisible();
 
-  // The form that creates a project is always present: it is how a tenant gets a product context.
   const create = page.getByRole('region', { name: 'Add a project' });
   await expect(create).toBeVisible();
-  await expect(create.getByLabel('Name')).toBeVisible();
-  await expect(create.getByLabel('What the product is')).toBeVisible();
-  await expect(create.getByRole('button', { name: 'Create project' })).toBeVisible();
 
-  // The seed gives the tenant its default project, so exactly one is marked as the prompt context.
-  await expect(page.getByText('default').first()).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Analyse communities' }).first()).toBeVisible();
+  // The only way a tenant gets a product context is this form, so it has to work end to end.
+  const name = `E2E product ${Date.now()}`;
+  await create.getByLabel('Name').fill(name);
+  await create
+    .getByLabel('What the product is')
+    .fill('Real-time multilingual voice translation for live meetings and interviews.');
+  await create.getByRole('button', { name: 'Create project' }).click();
+
+  await expect(page.getByText(/project created/)).toBeVisible();
+  const card = page.getByRole('region', { name: new RegExp(name) });
+  await expect(card).toBeVisible();
+  await expect(card.getByRole('button', { name: 'Analyse communities' })).toBeVisible();
+
+  // The ranking itself calls a model, so it is covered by the backend tests; here the contract is
+  // that the action exists on the project the operator just created.
 });

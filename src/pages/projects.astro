@@ -51,7 +51,7 @@ const plan = (projects.data?.items ?? []).length;
 
   {
     (projects.data?.items ?? []).map((project) => (
-      <Card class="mb-4">
+      <Card class="mb-4" label={project.name}>
         <div class="flex flex-wrap items-baseline justify-between gap-2">
           <h2 class="m-0 flex items-center gap-2 text-base font-semibold">
             {project.name}
