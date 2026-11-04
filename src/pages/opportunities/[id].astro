@@ -190,6 +190,40 @@ const dimensions: Record<string, string> = {
           </section>
         </div>
 
+        <h2>Comments</h2>
+        {data.comments.length === 0 ? (
+          <p class="muted">No drafts yet. Generate the three variants above.</p>
+        ) : (
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">Variant</th>
+                  <th scope="col">Status</th>
+                  <th scope="col">Excerpt</th>
+                  <th scope="col">Version</th>
+                  <th scope="col">Open</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.comments.map((comment) => (
+                  <tr>
+                    <td>{label(comment.variant)}</td>
+                    <td>
+                      <span class={statusClass(comment.status)}>{label(comment.status)}</span>
+                    </td>
+                    <td class="small">{truncate(comment.body, 120)}</td>
+                    <td>{comment.version}</td>
+                    <td>
+                      <a href={`/comments/${comment.id}`}>review</a>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
         <h2>Score breakdown</h2>
         {data.score_breakdown === null ? (
           <p class="muted">Not scored yet.</p>
@@ -312,40 +346,6 @@ const dimensions: Record<string, string> = {
               </li>
             ))}
           </ul>
-        )}
-
-        <h2>Comments</h2>
-        {data.comments.length === 0 ? (
-          <p class="muted">No drafts yet. Generate the three variants above.</p>
-        ) : (
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th scope="col">Variant</th>
-                  <th scope="col">Status</th>
-                  <th scope="col">Excerpt</th>
-                  <th scope="col">Version</th>
-                  <th scope="col">Open</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.comments.map((comment) => (
-                  <tr>
-                    <td>{label(comment.variant)}</td>
-                    <td>
-                      <span class={statusClass(comment.status)}>{label(comment.status)}</span>
-                    </td>
-                    <td class="small">{truncate(comment.body, 120)}</td>
-                    <td>{comment.version}</td>
-                    <td>
-                      <a href={`/comments/${comment.id}`}>review</a>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
         )}
 
         <h2>Engagement history</h2>

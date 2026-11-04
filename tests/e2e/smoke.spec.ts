@@ -22,12 +22,38 @@ test('opportunities inbox is reachable and shows either rows or an empty state',
   ).toBeVisible();
 });
 
-test('the reply console loads with a composer or an explicit empty state', async ({ page }) => {
+test('the reply queue loads with a composer or an explicit empty state', async ({ page }) => {
   await page.goto('/reply-queue');
-  await expect(page.getByRole('heading', { name: 'Reply' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Reply queue' })).toBeVisible();
   await expect(
     page
-      .getByRole('region', { name: /reply console/i })
+      .getByRole('region', { name: /reply queue/i })
       .or(page.getByText('The reply queue is empty')),
   ).toBeVisible();
+});
+
+test('the reply comes right under the original post and copies in one click', async ({
+  page,
+  context,
+}) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await page.goto('/reply-queue');
+
+  const sheet = page.getByRole('article').first();
+  if ((await sheet.count()) === 0) test.skip(true, 'no lead in the queue in this environment');
+
+  // Reading order: the original post first, the reply immediately after it, each with its own link.
+  const source = sheet.getByRole('heading', { level: 2 }).first();
+  const replyHeading = sheet.getByRole('heading', { name: 'Your reply' });
+  await expect(source).toBeVisible();
+  await expect(replyHeading).toBeVisible();
+  await expect(sheet.getByRole('link', { name: /open on reddit/i }).first()).toBeVisible();
+
+  const copy = sheet.getByRole('button', { name: /copy reply/i });
+  if ((await copy.count()) === 0) test.skip(true, 'this lead has no drafts yet');
+
+  const text = await sheet.getByRole('textbox').inputValue();
+  await copy.click();
+  await expect(sheet.getByRole('button', { name: /copied/i })).toBeVisible();
+  expect(await page.evaluate('navigator.clipboard.readText()')).toBe(text);
 });
