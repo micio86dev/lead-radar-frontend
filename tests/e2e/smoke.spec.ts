@@ -57,3 +57,34 @@ test('the reply comes right under the original post and copies in one click', as
   await expect(sheet.getByRole('button', { name: /copied/i })).toBeVisible();
   expect(await page.evaluate('navigator.clipboard.readText()')).toBe(text);
 });
+
+test('the queue switches between to reply and answered without losing the list', async ({
+  page,
+}) => {
+  await page.goto('/reply-queue');
+  const toReply = page.getByRole('link', { name: 'To reply' });
+  const answered = page.getByRole('link', { name: 'Answered' });
+  await expect(toReply).toBeVisible();
+  await expect(answered).toBeVisible();
+  await expect(toReply).toHaveAttribute('aria-current', 'page');
+
+  await answered.click();
+  await expect(page).toHaveURL(/answered=1/);
+  await expect(page.getByRole('link', { name: 'Answered' })).toHaveAttribute(
+    'aria-current',
+    'page',
+  );
+});
+
+test('follow-ups page explains itself and lists waiting threads or an empty state', async ({
+  page,
+}) => {
+  const response = await page.goto('/follow-ups');
+  expect(response?.status()).toBe(200);
+  await expect(page.getByRole('heading', { name: 'Follow-ups', level: 1 })).toBeVisible();
+  await expect(
+    page
+      .getByRole('region', { name: /follow-ups waiting/i })
+      .or(page.getByText('No follow-ups waiting')),
+  ).toBeVisible();
+});

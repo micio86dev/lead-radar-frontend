@@ -13,6 +13,7 @@ interface Lead {
   vertical_primary: string;
   content_snippet?: string;
   evidence_count?: number;
+  answered_at?: string | null;
 }
 
 interface Draft {
@@ -29,7 +30,25 @@ interface Item {
   comments: Draft[];
 }
 
-const props = defineProps<{ items: Item[] }>();
+const props = defineProps<{
+  items: Item[];
+  includeAnswered?: boolean;
+  pacing?: { next_reply_at: string | null; retry_after_seconds: number; source: string | null };
+}>();
+
+const wait = ref<number>(props.pacing?.retry_after_seconds ?? 0);
+let waitTimer: ReturnType<typeof setInterval> | undefined;
+const waitLabel = computed<string>(() => {
+  const total = Math.max(0, wait.value);
+  const minutes = Math.floor(total / 60);
+  const seconds = String(total % 60).padStart(2, '0');
+  return `${minutes}:${seconds}`;
+});
+const waitSource = computed<string>(() => {
+  if (props.pacing?.source === 'reddit_reported') return 'Reddit told the browser widget to wait';
+  if (props.pacing?.source === 'publication') return 'your own floor after the last reply';
+  return 'recorded wait';
+});
 
 const variants = ['helpful', 'soft_pitch', 'direct_pitch'] as const;
 const variantLabels: Record<string, string> = {
@@ -203,10 +222,19 @@ function onKey(event: KeyboardEvent): void {
   event.preventDefault();
 }
 
-onMounted(() => window.addEventListener('keydown', onKey));
+onMounted(() => {
+  window.addEventListener('keydown', onKey);
+  if (wait.value > 0) {
+    waitTimer = setInterval(() => {
+      wait.value = Math.max(0, wait.value - 1);
+      if (wait.value === 0 && waitTimer) clearInterval(waitTimer);
+    }, 1000);
+  }
+});
 onUnmounted(() => {
   window.removeEventListener('keydown', onKey);
   if (copiedTimer) clearTimeout(copiedTimer);
+  if (waitTimer) clearInterval(waitTimer);
 });
 
 async function posted(leadId: string): Promise<void> {
@@ -237,6 +265,22 @@ async function posted(leadId: string): Promise<void> {
 <template>
   <section aria-label="Reply queue" class="queue">
     <div class="queue-bar">
+      <div class="views" role="group" aria-label="Queue view">
+        <a
+          href="/reply-queue"
+          :class="['view', { 'view-on': !props.includeAnswered }]"
+          :aria-current="!props.includeAnswered ? 'page' : undefined"
+        >
+          To reply
+        </a>
+        <a
+          href="/reply-queue?answered=1"
+          :class="['view', { 'view-on': props.includeAnswered }]"
+          :aria-current="props.includeAnswered ? 'page' : undefined"
+        >
+          Answered
+        </a>
+      </div>
       <p class="muted small">
         {{
           items.length === 0
@@ -249,6 +293,13 @@ async function posted(leadId: string): Promise<void> {
         <kbd>c</kbd> copy · <kbd>o</kbd> open · <kbd>p</kbd> posted
       </p>
     </div>
+
+    <p v-if="wait > 0" class="limit" role="status">
+      <strong>Reddit throttle:</strong> next reply in {{ waitLabel }} ({{ waitSource }}).
+      <span class="muted small"
+        >You can copy and stage a reply meanwhile; nothing is sent from here.</span
+      >
+    </p>
 
     <p
       v-if="message"
@@ -276,6 +327,9 @@ async function posted(leadId: string): Promise<void> {
           </span>
           <span class="chip">{{ item.lead.qualification_status.replace(/_/g, ' ') }}</span>
           <span class="chip">{{ item.lead.language ?? 'und' }}</span>
+          <span v-if="item.lead.answered_at" class="chip chip--done">
+            answered {{ new Date(item.lead.answered_at).toLocaleDateString() }}
+          </span>
         </div>
 
         <h2 class="source-title">
@@ -427,6 +481,44 @@ async function posted(leadId: string): Promise<void> {
 .queue {
   display: grid;
   gap: var(--space-3);
+}
+
+.views {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  background: var(--surface-alt);
+  border-radius: 8px;
+}
+
+.view {
+  padding: 0.25rem 0.7rem;
+  border-radius: 6px;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.view-on {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 1px 2px rgb(20 24 31 / 12%);
+}
+
+.limit {
+  background: var(--warn-bg);
+  border: 1px solid #ecd3a2;
+  color: var(--warn);
+  border-radius: var(--radius);
+  padding: 0.6rem 0.9rem;
+  margin: 0;
+}
+
+.chip--done {
+  background: var(--good-bg);
+  border-color: #bfe3cf;
+  color: var(--good);
 }
 
 .queue-bar {

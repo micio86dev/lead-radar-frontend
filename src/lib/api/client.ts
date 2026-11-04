@@ -138,14 +138,51 @@ export const api = {
   opportunity: (id: string) =>
     request<OpportunityDetail>(`/api/v1/opportunities/${encodeURIComponent(id)}`),
 
-  replyConsole: (limit = 20) =>
+  replyConsole: (limit = 20, includeAnswered = false) =>
     request<{
       items: {
-        lead: OpportunityListItem & { content_snippet?: string };
+        lead: OpportunityListItem & { content_snippet?: string; answered_at?: string | null };
         comments: CommentSummary[];
       }[];
-      stats: { ready: number; needs_drafts: number; returned: number };
-    }>(`/api/v1/reply-console?limit=${limit}`),
+      stats: { ready: number; needs_drafts: number; returned: number; answered?: number };
+      pacing?: {
+        next_reply_at: string | null;
+        retry_after_seconds: number;
+        source: string | null;
+      };
+    }>(`/api/v1/reply-console?limit=${limit}${includeAnswered ? '&include_answered=1' : ''}`),
+
+  followups: (state: 'waiting' | 'answered' | 'closed' | 'all' = 'waiting', limit = 20) =>
+    request<{
+      items: {
+        lead_id: string;
+        title: string | null;
+        url: string | null;
+        community: string | null;
+        state: string;
+        new_replies: number;
+        last_reporter: string | null;
+        last_excerpt: string | null;
+        last_reply_at: string | null;
+        published_at: string | null;
+        updated_at: string;
+      }[];
+    }>(`/api/v1/followups?state=${state}&limit=${limit}`),
+
+  followupUpdate: (
+    leadId: string,
+    body: {
+      state?: 'waiting' | 'answered' | 'closed';
+      new_replies?: number;
+      last_reporter?: string;
+      latest_excerpt?: string;
+      latest_reply_at?: string;
+    },
+  ) =>
+    request<Record<string, unknown>>(
+      `/api/v1/opportunities/${encodeURIComponent(leadId)}/followup`,
+      { method: 'POST', body },
+    ),
 
   replyTo: (
     leadId: string,

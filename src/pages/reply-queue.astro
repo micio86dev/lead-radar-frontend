@@ -5,7 +5,9 @@ import Layout from '../layouts/Layout.astro';
 import { api } from '../lib/api/client';
 import { load } from '../lib/page';
 
-const { data, error } = await load(() => api.replyConsole(25));
+// `?answered=1` shows the leads already replied to, so the queue itself never re-offers finished work.
+const answeredView = Astro.url.searchParams.get('answered') === '1';
+const { data, error } = await load(() => api.replyConsole(25, answeredView));
 let items = data?.items ?? [];
 let preparing = 0;
 let cooldown = false;
@@ -13,7 +15,7 @@ let cooldown = false;
 // Keep the queue ready, the way Bazzly does it: when fewer than five leads have drafts, ask the worker
 // for up to three more. The endpoint rate limits automatic preparation, so a refresh cannot queue paid
 // generation repeatedly; the explicit button always works.
-if (data && data.stats.ready < 5 && data.stats.needs_drafts > 0) {
+if (!answeredView && data && data.stats.ready < 5 && data.stats.needs_drafts > 0) {
   const prepared = await load(() => api.prepareDrafts(3, true));
   preparing = Number(prepared.data?.queued ?? 0);
   cooldown = Boolean(prepared.data?.cooldown_minutes);
@@ -39,9 +41,10 @@ if (data && data.stats.ready < 5 && data.stats.needs_drafts > 0) {
   {
     data && (
       <p class="muted small">
-        {data.stats.ready} ready · {data.stats.needs_drafts} waiting for drafts ·{' '}
-        {data.stats.returned} in this queue. Qualified leads come first, then the ones flagged for
-        review.
+        {answeredView
+          ? `${data.stats.returned} already answered · ${data.stats.answered ?? 0} in total`
+          : `${data.stats.ready} ready · ${data.stats.needs_drafts} waiting for drafts · ${data.stats.returned} in this queue`}
+        . Qualified leads come first, then the ones flagged for review.
       </p>
     )
   }
@@ -71,7 +74,12 @@ if (data && data.stats.ready < 5 && data.stats.needs_drafts > 0) {
         hint="Import a conversation or run a discovery pass; leads that pass the gates appear here."
       />
     ) : (
-      <ReplyConsole items={items} client:load />
+      <ReplyConsole
+        items={items}
+        includeAnswered={answeredView}
+        pacing={data?.pacing}
+        client:load
+      />
     )
   }
 </Layout>

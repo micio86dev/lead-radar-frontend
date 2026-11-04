@@ -25,6 +25,7 @@ const OPS = new Set([
   'opportunity.generate',
   'opportunity.delete',
   'reply.post',
+  'followup.update',
   'reply.prepare',
   'comment.patch',
   'comment.status',
@@ -312,6 +313,17 @@ export const POST: APIRoute = async ({ request }) => {
           note: body.text('note'),
         });
         message = `recorded as posted (${result.comment.variant})`;
+        break;
+      }
+      case 'followup.update': {
+        const state = body.text('state');
+        if (state && !['waiting', 'answered', 'closed'].includes(state)) {
+          throw new ApiError(422, 'validation_failed', 'state must be waiting, answered or closed');
+        }
+        await api.followupUpdate(body.text('lead_id') ?? '', {
+          state: state as 'waiting' | 'answered' | 'closed' | undefined,
+        });
+        message = `follow-up ${state ?? 'updated'}`;
         break;
       }
       case 'reply.prepare': {

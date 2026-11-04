@@ -1,0 +1,44 @@
+---
+import EmptyState from '../components/EmptyState.astro';
+import FollowupList from '../components/vue/FollowupList.vue';
+import Layout from '../layouts/Layout.astro';
+import { api } from '../lib/api/client';
+import { load } from '../lib/page';
+
+const { data, error } = await load(() => api.followups('waiting', 20));
+const items = data?.items ?? [];
+---
+
+<Layout title="Follow-ups">
+  <div class="page-head">
+    <h1>Follow-ups</h1>
+    <p class="muted small">
+      Threads you replied to. The browser widget reports what Reddit shows it; nothing here is
+      polled from Reddit by the server.
+    </p>
+  </div>
+
+  {
+    error && (
+      <p class="notice notice--error" role="alert">
+        {error}
+      </p>
+    )
+  }
+
+  {
+    items.length === 0 && !error ? (
+      <>
+        <EmptyState
+          title="No follow-ups waiting"
+          hint="Record a reply as posted from the queue and it appears here, so an answer from the thread does not get lost. The browser widget reports new replies it sees on the thread."
+        />
+        <p class="small">
+          <a href="/reply-queue">Open the reply queue</a>
+        </p>
+      </>
+    ) : (
+      <FollowupList items={items} client:load />
+    )
+  }
+</Layout>
