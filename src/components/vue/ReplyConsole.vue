@@ -351,20 +351,6 @@ async function posted(leadId: string): Promise<void> {
           ></textarea>
 
           <div class="reply-actions">
-            <button
-              type="button"
-              class="copy-cta"
-              :class="{
-                'copy-cta--done': copied === `${item.lead.id}:${activeVariant(item.lead.id)}`,
-              }"
-              @click="copy(item.lead.id)"
-            >
-              {{
-                copied === `${item.lead.id}:${activeVariant(item.lead.id)}`
-                  ? 'Copied ✓'
-                  : 'Copy reply'
-              }}
-            </button>
             <button type="button" class="secondary" @click="openThread()">
               Open on Reddit <span aria-hidden="true">↗</span>
             </button>
