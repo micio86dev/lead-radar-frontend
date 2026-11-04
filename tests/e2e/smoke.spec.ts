@@ -94,13 +94,13 @@ test('the inbox defaults to a visible score floor and can show every score', asy
   await expect(page.getByRole('heading', { name: 'Opportunities' })).toBeVisible();
 
   // The default floor is 60 and it is stated, not hidden.
-  await expect(page.getByText(/leads with score ≥ 60/)).toBeVisible();
+  await expect(page.getByText(/leads? with score ≥ 60/)).toBeVisible();
   await expect(page.getByLabel('Score min')).toHaveValue('60');
 
   // The escape hatch keeps the other filters and drops only the floor.
   await page.getByRole('link', { name: 'Show all scores' }).click();
   await expect(page).toHaveURL(/all=1/);
-  await expect(page.getByText(/leads, all scores/)).toBeVisible();
+  await expect(page.getByText(/leads?, all scores/)).toBeVisible();
   await expect(page.getByLabel('Score min')).toHaveValue('');
   await expect(page.getByRole('link', { name: /Back to score ≥ 60/ })).toBeVisible();
 });

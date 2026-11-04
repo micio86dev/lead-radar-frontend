@@ -101,6 +101,9 @@ const runnableActors =
   actors.data?.items.filter((actor) => actor.enabled && actor.validation_status === 'validated') ??
   [];
 const target = formTarget(url);
+/** "1 lead" is not "1 leads": the header is the most-read line on the page. */
+const leadCount = (count: number): string =>
+  `${formatNumber(count)} ${count === 1 ? 'lead' : 'leads'}`;
 const totalPages = data ? Math.max(1, Math.ceil(data.total / data.per_page)) : 1;
 ---
 
@@ -111,8 +114,8 @@ const totalPages = data ? Math.max(1, Math.ceil(data.total / data.per_page)) : 1
       {
         data
           ? minScore === null
-            ? `${formatNumber(data.total)} leads, all scores`
-            : `${formatNumber(data.total)} leads with score ≥ ${minScore}` +
+            ? `${leadCount(data.total)}, all scores`
+            : `${leadCount(data.total)} with score ≥ ${minScore}` +
               (unfiltered?.data ? ` of ${formatNumber(unfiltered.data.total)}` : '')
           : 'Loading…'
       }
