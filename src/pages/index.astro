@@ -24,12 +24,6 @@ type ScoreTone = (typeof scoreTones)[number];
 const scoreTone = (category: string | null): ScoreTone =>
   scoreTones.includes(category as ScoreTone) ? (category as ScoreTone) : 'low';
 
-/** A row of the two distribution panels: a name, a count and its share of the biggest row. */
-interface Slice {
-  name: string;
-  count: number;
-}
-
 const slices = (rows: { count: number }[]): number => Math.max(1, ...rows.map((row) => row.count));
 
 const share = (count: number, max: number): string =>

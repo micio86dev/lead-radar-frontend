@@ -378,3 +378,38 @@ export interface Settings {
   };
   providers: ProviderStatus[];
 }
+
+export interface Project {
+  id: string;
+  name: string;
+  summary: string;
+  website_urls: string[];
+  is_default: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ProjectCommunityMatch {
+  community_id: string;
+  name: string;
+  vertical: string;
+  enabled: boolean;
+  relevance: number;
+  reason: string;
+  matched_at: string;
+}
+
+export interface ProjectDetail {
+  project: Project;
+  communities: ProjectCommunityMatch[];
+}
+
+export interface ProjectAnalysis {
+  project_id: string;
+  candidates: number;
+  matched: number;
+  provider: string;
+  model: string;
+  pages: { url: string; read: boolean; error: string | null }[];
+  communities: ProjectCommunityMatch[];
+}

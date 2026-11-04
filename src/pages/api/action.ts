@@ -33,6 +33,10 @@ const OPS = new Set([
   'comment.reject',
   'comment.publish',
   'engagement.create',
+  'project.create',
+  'project.patch',
+  'project.delete',
+  'project.match',
   'community.patch',
   'community.validate',
   'source.create',
@@ -67,6 +71,17 @@ interface Body {
   getAll(key: string): string[];
   /** Parse a field that holds a JSON object. */
   json(key: string): Record<string, unknown> | undefined;
+}
+
+/** One URL per line in the textarea; blank lines and duplicates are dropped. */
+function splitUrls(raw: string | undefined): string[] {
+  if (!raw) return [];
+  const seen = new Set<string>();
+  for (const line of raw.split(/\s*[\n,]\s*/)) {
+    const url = line.trim();
+    if (url !== '') seen.add(url);
+  }
+  return [...seen];
 }
 
 function asText(value: Field): string | undefined {
@@ -366,6 +381,39 @@ export const POST: APIRoute = async ({ request }) => {
           note: body.text('note'),
         });
         break;
+      case 'project.create': {
+        const result = await api.post<{ id: string }>('/api/v1/projects', {
+          name: body.text('name'),
+          summary: body.text('summary') ?? '',
+          website_urls: splitUrls(body.text('website_urls')),
+        });
+        message = `project created (${result.id.slice(0, 8)})`;
+        break;
+      }
+      case 'project.patch': {
+        await api.patch(`/api/v1/projects/${encodeURIComponent(body.text('id') ?? '')}`, {
+          name: body.text('name'),
+          summary: body.text('summary'),
+          website_urls: body.has('website_urls') ? splitUrls(body.text('website_urls')) : undefined,
+          is_default: body.has('is_default') ? body.flag('is_default') : undefined,
+        });
+        message = 'project updated';
+        break;
+      }
+      case 'project.delete':
+        if (!body.flag('confirm')) {
+          throw new ApiError(422, 'validation_failed', 'confirmation required');
+        }
+        await api.delete(`/api/v1/projects/${encodeURIComponent(body.text('id') ?? '')}`);
+        message = 'project deleted';
+        break;
+      case 'project.match': {
+        const result = await api.post<{ candidates: number; matched: number }>(
+          `/api/v1/projects/${encodeURIComponent(body.text('id') ?? '')}/match-communities`,
+        );
+        message = `analysis ranked ${result.matched} of ${result.candidates} communities`;
+        break;
+      }
       case 'community.patch':
         await api.patch(`/api/v1/communities/${encodeURIComponent(body.text('id') ?? '')}`, {
           enabled: body.has('enabled') ? body.flag('enabled') : undefined,

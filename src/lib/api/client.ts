@@ -8,6 +8,8 @@
 
 import { buildQuery, type QueryValue } from '../query';
 import type {
+  Project,
+  ProjectDetail,
   Actor,
   ApifyRun,
   ApifyUsage,
@@ -210,6 +212,9 @@ export const api = {
   communities: (params: Record<string, QueryValue>) =>
     request<Paginated<Community>>(`/api/v1/communities${buildQuery(params)}`),
   sources: () => request<Paginated<Source>>('/api/v1/sources'),
+
+  projects: () => request<{ items: Project[]; total: number }>('/api/v1/projects'),
+  project: (id: string) => request<ProjectDetail>(`/api/v1/projects/${encodeURIComponent(id)}`),
 
   actors: () => request<Paginated<Actor>>('/api/v1/providers/apify/actors'),
   apifyRuns: (params: Record<string, QueryValue>) =>
