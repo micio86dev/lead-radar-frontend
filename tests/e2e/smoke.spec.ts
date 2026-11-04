@@ -88,3 +88,47 @@ test('follow-ups page explains itself and lists waiting threads or an empty stat
       .or(page.getByText('No follow-ups waiting')),
   ).toBeVisible();
 });
+
+test('the inbox defaults to a visible score floor and can show every score', async ({ page }) => {
+  await page.goto('/opportunities');
+  await expect(page.getByRole('heading', { name: 'Opportunities' })).toBeVisible();
+
+  // The default floor is 60 and it is stated, not hidden.
+  await expect(page.getByText(/leads with score ≥ 60/)).toBeVisible();
+  await expect(page.getByLabel('Score min')).toHaveValue('60');
+
+  // The escape hatch keeps the other filters and drops only the floor.
+  await page.getByRole('link', { name: 'Show all scores' }).click();
+  await expect(page).toHaveURL(/all=1/);
+  await expect(page.getByText(/leads, all scores/)).toBeVisible();
+  await expect(page.getByLabel('Score min')).toHaveValue('');
+  await expect(page.getByRole('link', { name: /Back to score ≥ 60/ })).toBeVisible();
+});
+
+test('the search panel explains how a search starts and needs an explicit confirmation', async ({
+  page,
+}) => {
+  await page.goto('/opportunities');
+  const panel = page.getByRole('region', { name: 'Start a search' });
+  await expect(panel).toBeVisible();
+
+  const runForm = panel
+    .locator('form')
+    .filter({ has: page.locator('input[name="op"][value="apify.run.start"]') });
+
+  if ((await runForm.count()) === 0) {
+    // No validated Actor in this environment: the panel says so instead of faking a run.
+    await expect(panel.getByText(/no validated Actor to run/i)).toBeVisible();
+    await expect(panel.getByRole('link', { name: /open apify/i })).toBeVisible();
+    return;
+  }
+
+  // A registered Actor: the run is billable, so the form submits the confirmation field the server
+  // requires and the submit button stays disabled until the box is checked.
+  const first = runForm.first();
+  await expect(first.locator('input[name="confirm"][type="checkbox"]')).toBeVisible();
+  await expect(first.locator('input[name="items_limit"]')).toBeVisible();
+  await expect(first.getByRole('button', { name: /start search/i })).toBeDisabled();
+  await first.locator('input[name="confirm"]').check();
+  await expect(first.getByRole('button', { name: /start search/i })).toBeEnabled();
+});

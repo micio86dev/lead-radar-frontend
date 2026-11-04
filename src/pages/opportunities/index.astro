@@ -1,9 +1,12 @@
 ---
+import ConfirmSubmit from '../../components/ConfirmSubmit.vue';
 import EmptyState from '../../components/EmptyState.astro';
+import Button from '../../components/ui/Button.astro';
+import Card from '../../components/ui/Card.astro';
 import Layout from '../../layouts/Layout.astro';
 import { api } from '../../lib/api/client';
 import { formatDateTime, formatNumber, label, scoreClass } from '../../lib/format';
-import { load, pageLink, param } from '../../lib/page';
+import { load, pageLink, param, formTarget } from '../../lib/page';
 
 const url = Astro.url;
 const verticals = [
@@ -33,10 +36,37 @@ const asTimestamp = (value: string, endOfDay = false): string | undefined => {
   return value;
 };
 
+/**
+ * The inbox is a triage queue, not an archive: by default it shows the leads worth a human look, and
+ * a lead is worth a look at 60/100 or more. The threshold is visible, editable and escapable — a
+ * default that hides rows without saying so would be a trap.
+ */
+const DEFAULT_MIN_SCORE = 60;
+const hasScoreParam = url.searchParams.has('score_min');
+const showAllScores = param(url, 'all') === '1';
+const parsedMinScore = Number(param(url, 'score_min'));
+const minScore: number | null = showAllScores
+  ? null
+  : hasScoreParam
+    ? param(url, 'score_min') === '' || Number.isNaN(parsedMinScore)
+      ? null
+      : parsedMinScore
+    : DEFAULT_MIN_SCORE;
+
+/** Same page, same filters, different score floor. */
+const withScoreFloor = (floor: number | null): string => {
+  const query = new URLSearchParams(url.searchParams);
+  for (const key of ['ok', 'error', 'page', 'all', 'score_min']) query.delete(key);
+  if (floor === null) query.set('all', '1');
+  else query.set('score_min', String(floor));
+  const search = query.toString();
+  return search ? `${url.pathname}?${search}` : url.pathname;
+};
+
 const params = {
   vertical: param(url, 'vertical') || undefined,
   score_category: param(url, 'score_category') || undefined,
-  score_min: param(url, 'score_min') || undefined,
+  score_min: minScore === null ? undefined : String(minScore),
   score_max: param(url, 'score_max') || undefined,
   intent: param(url, 'intent') || undefined,
   language: param(url, 'language') || undefined,
@@ -55,6 +85,22 @@ const params = {
 };
 
 const { data, error } = await load(() => api.opportunities(params));
+/**
+ * Only fetched when the floor is active: the header has to say how many leads the floor hides, or the
+ * operator cannot tell an empty pipeline from a filtered one.
+ */
+const unfiltered =
+  minScore === null
+    ? null
+    : await load(() =>
+        api.opportunities({ ...params, score_min: undefined, page: 1, per_page: 1 }),
+      );
+
+const actors = await load(() => api.actors());
+const runnableActors =
+  actors.data?.items.filter((actor) => actor.enabled && actor.validation_status === 'validated') ??
+  [];
+const target = formTarget(url);
 const totalPages = data ? Math.max(1, Math.ceil(data.total / data.per_page)) : 1;
 ---
 
@@ -62,9 +108,85 @@ const totalPages = data ? Math.max(1, Math.ceil(data.total / data.per_page)) : 1
   <div class="page-head">
     <h1>Opportunities</h1>
     <p class="muted small">
-      {data ? `${formatNumber(data.total)} leads matching the filters` : 'Loading…'}
+      {
+        data
+          ? minScore === null
+            ? `${formatNumber(data.total)} leads, all scores`
+            : `${formatNumber(data.total)} leads with score ≥ ${minScore}` +
+              (unfiltered?.data ? ` of ${formatNumber(unfiltered.data.total)}` : '')
+          : 'Loading…'
+      }
+      {
+        minScore === null ? (
+          <a
+            href={withScoreFloor(DEFAULT_MIN_SCORE)}
+            class="ml-2 font-semibold text-accent hover:underline"
+          >
+            Back to score ≥ {DEFAULT_MIN_SCORE}
+          </a>
+        ) : (
+          <a href={withScoreFloor(null)} class="ml-2 font-semibold text-accent hover:underline">
+            Show all scores
+          </a>
+        )
+      }
     </p>
   </div>
+
+  <Card title="Start a search" class="mb-4">
+    {
+      runnableActors.length === 0 ? (
+        <>
+          <p class="small">
+            There is no validated Actor to run, so a search cannot start yet. An Actor is a
+            third-party collector with a verified id, and Lead Radar refuses to invent one.
+          </p>
+          <Button href="/apify" variant="secondary" size="sm" class="mt-3">
+            Open Apify to register an Actor
+          </Button>
+        </>
+      ) : (
+        <div class="space-y-4">
+          <p class="small muted">
+            A run spends Apify credit under the configured budget and can be refused by the cost
+            guard. Results arrive as jobs; this page shows them once they are scored.
+          </p>
+          {runnableActors.map((actor) => (
+            <form method="post" action="/api/action">
+              <input type="hidden" name="op" value="apify.run.start" />
+              <input type="hidden" name="actor_registry_id" value={actor.id} />
+              <input type="hidden" name="redirect" value={target} />
+              <p class="small">
+                <strong>{actor.name}</strong> · {actor.actor_id} · up to{' '}
+                {formatNumber(actor.max_items_per_run)} items
+              </p>
+              <div class="flex flex-wrap items-end gap-3">
+                <div>
+                  <label for={`items-${actor.id}`}>Items for this run</label>
+                  <input
+                    id={`items-${actor.id}`}
+                    name="items_limit"
+                    type="number"
+                    min="1"
+                    max={actor.max_items_per_run}
+                    value={actor.max_items_per_run}
+                    class="w-32"
+                  />
+                </div>
+                <ConfirmSubmit
+                  label="Start search"
+                  confirmation="I understand this run may spend Apify credit"
+                  client:load
+                />
+              </div>
+            </form>
+          ))}
+        </div>
+      )
+    }
+  </Card>
+
+  {actors.error && <p class="notice notice--info">Actor registry unavailable: {actors.error}</p>}
 
   {
     error && (
@@ -110,8 +232,12 @@ const totalPages = data ? Math.max(1, Math.ceil(data.total / data.per_page)) : 1
           type="number"
           min="0"
           max="100"
-          value={param(url, 'score_min')}
+          value={minScore === null ? '' : String(minScore)}
+          aria-describedby="score_min-hint"
         />
+        <p id="score_min-hint" class="mt-1 text-xs text-ink-muted">
+          Defaults to {DEFAULT_MIN_SCORE}. Empty means no minimum.
+        </p>
       </div>
       <div>
         <label for="score_max">Score max</label>
