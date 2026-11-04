@@ -370,6 +370,18 @@ export const POST: APIRoute = async ({ request }) => {
         await api.patch(`/api/v1/communities/${encodeURIComponent(body.text('id') ?? '')}`, {
           enabled: body.has('enabled') ? body.flag('enabled') : undefined,
           notes: body.text('notes'),
+          self_promotion: body.text('self_promotion'),
+          min_account_age_days: body.text('min_account_age_days')
+            ? Number.parseInt(body.text('min_account_age_days') ?? '', 10)
+            : undefined,
+          min_comment_karma: body.text('min_comment_karma')
+            ? Number.parseInt(body.text('min_comment_karma') ?? '', 10)
+            : undefined,
+          promo_cooldown_days: body.text('promo_cooldown_days')
+            ? Number.parseInt(body.text('promo_cooldown_days') ?? '', 10)
+            : undefined,
+          flair_required: body.has('flair_required') ? body.flag('flair_required') : undefined,
+          rules_summary: body.text('rules_summary'),
         });
         break;
       case 'community.validate':

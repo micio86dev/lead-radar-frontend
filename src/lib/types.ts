@@ -220,6 +220,13 @@ export interface Community {
   notes: string | null;
   last_checked_at: string | null;
   created_at: string;
+  /** allowed | ask_mods | forbidden | unknown. Unknown is not permission. */
+  self_promotion: string;
+  min_account_age_days: number;
+  min_comment_karma: number;
+  flair_required: boolean;
+  promo_cooldown_days: number;
+  rules_summary: string;
 }
 
 export interface Source {

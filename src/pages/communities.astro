@@ -1,5 +1,13 @@
 ---
 import Layout from '../layouts/Layout.astro';
+
+/** The policy is the thing that decides whether a pitch may be published, so it gets its own tone. */
+const promotionClass = (policy: string): string =>
+  policy === 'allowed'
+    ? 'badge badge--good'
+    : policy === 'forbidden' || policy === 'unknown'
+      ? 'badge badge--bad'
+      : 'badge badge--warm';
 import { api } from '../lib/api/client';
 import { formatDateTime, label, statusClass } from '../lib/format';
 import { formTarget, load, param } from '../lib/page';
@@ -76,6 +84,7 @@ const { data, error } = await load(() => api.communities(params));
               <th scope="col">Vertical</th>
               <th scope="col">Validation</th>
               <th scope="col">Enabled</th>
+              <th scope="col">Promotion</th>
               <th scope="col">Notes</th>
               <th scope="col">Actions</th>
             </tr>
@@ -91,6 +100,19 @@ const { data, error } = await load(() => api.communities(params));
                   </span>
                 </td>
                 <td>{community.enabled ? 'yes' : 'no'}</td>
+                <td>
+                  <span class={promotionClass(community.self_promotion)}>
+                    {label(community.self_promotion)}
+                  </span>
+                  {community.promo_cooldown_days > 0 && (
+                    <div class="muted small">
+                      {community.promo_cooldown_days}d between promotional replies
+                    </div>
+                  )}
+                  {community.min_account_age_days > 0 && (
+                    <div class="muted small">account ≥ {community.min_account_age_days}d</div>
+                  )}
+                </td>
                 <td class="small">{community.notes ?? '—'}</td>
                 <td>
                   <form method="post" action="/api/action">
@@ -105,6 +127,50 @@ const { data, error } = await load(() => api.communities(params));
                         checked={community.enabled}
                       />
                       <label for={`enable-${community.id}`}>Enabled</label>
+                    </div>
+                    <label for={`promotion-${community.id}`}>Self-promotion policy</label>
+                    <select id={`promotion-${community.id}`} name="self_promotion">
+                      <option value="unknown" selected={community.self_promotion === 'unknown'}>
+                        unknown — treated as forbidden
+                      </option>
+                      <option value="forbidden" selected={community.self_promotion === 'forbidden'}>
+                        forbidden
+                      </option>
+                      <option value="ask_mods" selected={community.self_promotion === 'ask_mods'}>
+                        ask the moderators first
+                      </option>
+                      <option value="allowed" selected={community.self_promotion === 'allowed'}>
+                        allowed with disclosure
+                      </option>
+                    </select>
+                    <label for={`rules-${community.id}`}>Rules you read (quote them)</label>
+                    <input
+                      id={`rules-${community.id}`}
+                      name="rules_summary"
+                      value={community.rules_summary}
+                      placeholder="rule text and where it was published"
+                    />
+                    <div class="form-row">
+                      <div>
+                        <label for={`age-${community.id}`}>Min account age (days)</label>
+                        <input
+                          id={`age-${community.id}`}
+                          name="min_account_age_days"
+                          type="number"
+                          min="0"
+                          value={community.min_account_age_days}
+                        />
+                      </div>
+                      <div>
+                        <label for={`cooldown-${community.id}`}>Promo cooldown (days)</label>
+                        <input
+                          id={`cooldown-${community.id}`}
+                          name="promo_cooldown_days"
+                          type="number"
+                          min="0"
+                          value={community.promo_cooldown_days}
+                        />
+                      </div>
                     </div>
                     <p>
                       <button type="submit" class="secondary">
