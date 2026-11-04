@@ -1,5 +1,8 @@
 ---
 import EmptyState from '../components/EmptyState.astro';
+import Badge from '../components/ui/Badge.astro';
+import Card from '../components/ui/Card.astro';
+import Notice from '../components/ui/Notice.astro';
 import Layout from '../layouts/Layout.astro';
 import { api } from '../lib/api/client';
 import {
@@ -8,12 +11,18 @@ import {
   formatMoney,
   formatNumber,
   label,
-  scoreClass,
   statusClass,
 } from '../lib/format';
 import { load } from '../lib/page';
 
 const { data, error } = await load(() => api.dashboard());
+
+/** Score categories the API can return; anything else falls back to the muted tone. */
+const scoreTones = ['hot', 'warm', 'potential', 'low'] as const;
+type ScoreTone = (typeof scoreTones)[number];
+
+const scoreTone = (category: string | null): ScoreTone =>
+  scoreTones.includes(category as ScoreTone) ? (category as ScoreTone) : 'low';
 ---
 
 <Layout title="Dashboard">
@@ -24,9 +33,9 @@ const { data, error } = await load(() => api.dashboard());
 
   {
     error && (
-      <p class="notice notice--error" role="alert">
+      <Notice tone="error" role="alert">
         {error}
-      </p>
+      </Notice>
     )
   }
 
@@ -43,37 +52,37 @@ const { data, error } = await load(() => api.dashboard());
     data && (
       <>
         <section class="grid grid--stats" aria-label="Opportunity totals">
-          <div class="card">
+          <Card>
             <p class="muted small">Opportunities</p>
             <p class="stat">{formatNumber(data.totals.opportunities)}</p>
             <p class="muted small">
               new in the last 24h: {formatNumber(data.totals.new_opportunities)}
             </p>
-          </div>
-          <div class="card">
+          </Card>
+          <Card>
             <p class="muted small">HOT</p>
             <p class="stat">{formatNumber(data.totals.hot)}</p>
             <p class="muted small">score 80–100</p>
-          </div>
-          <div class="card">
+          </Card>
+          <Card>
             <p class="muted small">WARM</p>
             <p class="stat">{formatNumber(data.totals.warm)}</p>
             <p class="muted small">score 60–79</p>
-          </div>
-          <div class="card">
+          </Card>
+          <Card>
             <p class="muted small">POTENTIAL</p>
             <p class="stat">{formatNumber(data.totals.potential)}</p>
             <p class="muted small">score 40–59</p>
-          </div>
-          <div class="card">
+          </Card>
+          <Card>
             <p class="muted small">LOW</p>
             <p class="stat">{formatNumber(data.totals.low)}</p>
             <p class="muted small">score 0–39</p>
-          </div>
+          </Card>
         </section>
 
         <div class="grid">
-          <section class="card" aria-label="Leads by vertical">
+          <Card label="Leads by vertical">
             <h2>By vertical</h2>
             {data.by_vertical.length === 0 ? (
               <p class="muted small">No leads yet.</p>
@@ -95,9 +104,9 @@ const { data, error } = await load(() => api.dashboard());
                 </tbody>
               </table>
             )}
-          </section>
+          </Card>
 
-          <section class="card" aria-label="Leads by intent">
+          <Card label="Leads by intent">
             <h2>By intent</h2>
             {data.by_intent.length === 0 ? (
               <p class="muted small">No leads yet.</p>
@@ -119,9 +128,9 @@ const { data, error } = await load(() => api.dashboard());
                 </tbody>
               </table>
             )}
-          </section>
+          </Card>
 
-          <section class="card" aria-label="Review queue and jobs">
+          <Card label="Review queue and jobs">
             <h2>Review queue</h2>
             <dl class="kv">
               <>
@@ -155,9 +164,9 @@ const { data, error } = await load(() => api.dashboard());
             <p>
               <a href="/settings">Inspect jobs</a>
             </p>
-          </section>
+          </Card>
 
-          <section class="card" aria-label="Apify spending">
+          <Card label="Apify spending">
             <h2>Apify spending</h2>
             <dl class="kv">
               <>
@@ -200,7 +209,7 @@ const { data, error } = await load(() => api.dashboard());
               </>
             </dl>
             <p class="muted small">Ceilings are configured in EUR; Apify reports charges in USD.</p>
-          </section>
+          </Card>
         </div>
 
         <h2>Provider status</h2>
@@ -262,9 +271,9 @@ const { data, error } = await load(() => api.dashboard());
                     </td>
                     <td>{label(item.vertical_primary)}</td>
                     <td>
-                      <span class={scoreClass(item.score_category)}>
+                      <Badge tone={scoreTone(item.score_category)}>
                         {label(item.score_category)}
-                      </span>
+                      </Badge>
                       <div class="muted small">{item.score ?? 'unknown'}</div>
                     </td>
                     <td>{label(item.qualification_status)}</td>
