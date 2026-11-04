@@ -21,3 +21,13 @@ test('opportunities inbox is reachable and shows either rows or an empty state',
     page.getByRole('table').or(page.getByText('No opportunities match these filters')),
   ).toBeVisible();
 });
+
+test('the reply console loads with a composer or an explicit empty state', async ({ page }) => {
+  await page.goto('/reply');
+  await expect(page.getByRole('heading', { name: 'Reply' })).toBeVisible();
+  await expect(
+    page
+      .getByRole('region', { name: /reply console/i })
+      .or(page.getByText('The reply queue is empty')),
+  ).toBeVisible();
+});

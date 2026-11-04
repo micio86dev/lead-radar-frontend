@@ -138,6 +138,30 @@ export const api = {
   opportunity: (id: string) =>
     request<OpportunityDetail>(`/api/v1/opportunities/${encodeURIComponent(id)}`),
 
+  replyConsole: (limit = 20) =>
+    request<{
+      items: {
+        lead: OpportunityListItem & { content_snippet?: string };
+        comments: CommentSummary[];
+      }[];
+      stats: { ready: number; needs_drafts: number; returned: number };
+    }>(`/api/v1/reply-console?limit=${limit}`),
+
+  replyTo: (
+    leadId: string,
+    body: { variant: string; body?: string; engagement_kind?: string; note?: string },
+  ) =>
+    request<{ comment: CommentSummary; engagement: Engagement | null; lead_id: string }>(
+      `/api/v1/opportunities/${encodeURIComponent(leadId)}/reply`,
+      { method: 'POST', body },
+    ),
+
+  prepareDrafts: (limit: number) =>
+    request<{ queued: number; job_ids: string[] }>('/api/v1/reply-console/prepare', {
+      method: 'POST',
+      body: { limit },
+    }),
+
   comments: (params: Record<string, QueryValue>) =>
     request<Paginated<CommentSummary>>(`/api/v1/comments${buildQuery(params)}`),
   comment: (id: string) => request<CommentDetail>(`/api/v1/comments/${encodeURIComponent(id)}`),

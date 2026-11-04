@@ -24,6 +24,8 @@ const OPS = new Set([
   'opportunity.analyze',
   'opportunity.generate',
   'opportunity.delete',
+  'reply.post',
+  'reply.prepare',
   'comment.patch',
   'comment.status',
   'comment.approve',
@@ -302,6 +304,22 @@ export const POST: APIRoute = async ({ request }) => {
         }
         await api.delete(`/api/v1/opportunities/${encodeURIComponent(body.text('id') ?? '')}`);
         break;
+      case 'reply.post': {
+        const result = await api.replyTo(body.text('lead_id') ?? '', {
+          variant: body.text('variant') ?? '',
+          body: body.text('body'),
+          engagement_kind: body.text('engagement_kind'),
+          note: body.text('note'),
+        });
+        message = `recorded as posted (${result.comment.variant})`;
+        break;
+      }
+      case 'reply.prepare': {
+        const limit = Number.parseInt(body.text('limit') ?? '5', 10);
+        const result = await api.prepareDrafts(Number.isFinite(limit) ? limit : 5);
+        message = `queued ${result.queued} draft generation job(s)`;
+        break;
+      }
       case 'comment.patch':
         await api.patch(`/api/v1/comments/${encodeURIComponent(body.text('id') ?? '')}`, {
           body: body.text('body'),
