@@ -1,13 +1,17 @@
 ---
 /**
- * The Lead Radar mark: a quarter radar sweep.
+ * The Lead Radar mark: a radar scope, read head-on.
  *
- * Two concentric arcs leave an origin dot and end at a signal dot, so the shape reads as "signal
- * detected" at 16px and stays legible in one colour. It is drawn in `currentColor` on purpose —
- * the accent comes from the surrounding text colour, and `forced-colors` modes keep the shape.
+ * An outer ring is the screen, the filled quarter sector is the sweep, and the two dots are the
+ * blip it just caught and the antenna at the centre. The geometry is drawn so the silhouette —
+ * ring, sweep, blip — still says "radar" at 16px, which is the size a favicon lives at.
+ *
+ * It is drawn in `currentColor` on purpose: the accent comes from the surrounding text colour and
+ * `forced-colors` modes keep the shape. The blip is solid while the ring and the inner arc are
+ * lighter, so the mark has a hierarchy instead of a uniform outline.
  *
  * The mark is decorative: the product name next to it is real text, so nothing depends on the
- * image. Callers that render the mark alone must supply the accessible name.
+ * image. Callers rendering the mark alone must supply the accessible name.
  */
 interface Props {
   /** Edge length in CSS pixels. The geometry is designed on a 32×32 grid. */
@@ -27,14 +31,14 @@ const { size = 28, class: className } = Astro.props;
   aria-hidden="true"
   focusable="false"
 >
-  <path
-    d="M7 25A18 18 0 0 1 25 7"
-    stroke="currentColor"
-    stroke-width="2.4"
-    stroke-linecap="round"
-    opacity="0.45"></path>
-  <path d="M7 25a11 11 0 0 1 11-11" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"
-  ></path>
-  <circle cx="7" cy="25" r="2.6" fill="currentColor"></circle>
-  <circle cx="25.5" cy="6.5" r="2.9" fill="currentColor"></circle>
+  <!-- the sweep: a filled quarter sector from the centre to the ring -->
+  <path d="M16 16 L16 3 A13 13 0 0 1 26.65 8.54 Z" fill="currentColor" opacity="0.38"></path>
+  <!-- the screen -->
+  <circle cx="16" cy="16" r="13" stroke="currentColor" stroke-width="2" opacity="0.85"></circle>
+  <!-- the range ring, kept faint so it never competes with the sweep -->
+  <circle cx="16" cy="16" r="6.5" stroke="currentColor" stroke-width="1.2" opacity="0.35"></circle>
+  <!-- the blip -->
+  <circle cx="20.25" cy="8.64" r="2.7" fill="currentColor"></circle>
+  <!-- the antenna -->
+  <circle cx="16" cy="16" r="1.9" fill="currentColor"></circle>
 </svg>
