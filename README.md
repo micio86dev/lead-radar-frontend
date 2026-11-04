@@ -28,3 +28,8 @@ Costs, Settings.
 Unknown values (for example a provider cost that was never reported) render as `unknown`; they are
 never shown as zero. Approval and manual publication are the only outbound actions, and both are
 explicit human decisions. See `../docs/api.md` for the contract this app consumes.
+
+## License
+
+PolyForm Noncommercial License 1.0.0 (see `LICENSE`). Noncommercial use is free; commercial use needs a
+paid license, described in the root repository's `COMMERCIAL.md`.
