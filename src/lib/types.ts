@@ -387,6 +387,11 @@ export interface Project {
   is_default: boolean;
   created_at: string;
   updated_at: string;
+  /** How many communities the stored ranking holds. */
+  matched: number;
+  /** The head of that ranking, for the card. */
+  top_communities: { name: string; relevance: number }[];
+  matched_at: string | null;
 }
 
 export interface ProjectCommunityMatch {

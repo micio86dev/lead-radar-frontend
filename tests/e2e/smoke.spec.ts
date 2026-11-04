@@ -153,7 +153,9 @@ test('a project can be created and becomes the product context the prompts use',
   await expect(page.getByText(/project created/)).toBeVisible();
   const card = page.getByRole('region', { name: new RegExp(name) });
   await expect(card).toBeVisible();
-  await expect(card.getByRole('button', { name: 'Analyse communities' })).toBeVisible();
+  await expect(card.getByText(/no ranking yet/i)).toBeVisible();
+  await expect(card.getByRole('button', { name: 'Analyse (generative)' })).toBeVisible();
+  await expect(card.getByRole('button', { name: 'Analyse (decision)' })).toBeVisible();
 
   // The ranking itself calls a model, so it is covered by the backend tests; here the contract is
   // that the action exists on the project the operator just created.

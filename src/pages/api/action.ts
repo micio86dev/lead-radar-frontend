@@ -410,12 +410,13 @@ export const POST: APIRoute = async ({ request }) => {
       case 'project.match': {
         // Reading pages and asking a model is slow work: the default 15s budget would report a
         // timeout for an analysis that is still running.
-        const result = await api.post<{ candidates: number; matched: number }>(
-          `/api/v1/projects/${encodeURIComponent(body.text('id') ?? '')}/match-communities`,
+        const scorer = body.text('scorer') === 'decision' ? 'decision' : 'generative';
+        const result = await api.post<{ candidates: number; matched: number; scorer: string }>(
+          `/api/v1/projects/${encodeURIComponent(body.text('id') ?? '')}/match-communities?scorer=${scorer}`,
           {},
           120_000,
         );
-        message = `analysis ranked ${result.matched} of ${result.candidates} communities`;
+        message = `${result.scorer} analysis ranked ${result.matched} of ${result.candidates} communities`;
         break;
       }
       case 'community.patch':

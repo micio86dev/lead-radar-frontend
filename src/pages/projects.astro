@@ -78,13 +78,45 @@ const plan = (projects.data?.items ?? []).length;
           <p class="muted small">No page URLs: the analysis judges from the description alone.</p>
         )}
 
+        {project.matched > 0 ? (
+          <div class="mb-3 rounded-control bg-sunken px-3 py-2">
+            <p class="muted small m-0 mb-1">
+              Last analysis: {formatDateTime(project.matched_at)} · {project.matched} communities
+              ranked
+            </p>
+            <ul class="m-0 flex list-none flex-wrap gap-1.5 p-0">
+              {project.top_communities.map((match) => (
+                <li>
+                  <Badge tone={rankTone(match.relevance)}>
+                    {match.name} · {match.relevance}
+                  </Badge>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : (
+          <p class="muted small">
+            No ranking yet: run an analysis to see which active communities fit.
+          </p>
+        )}
+
         <div class="flex flex-wrap items-center gap-2">
           <form method="post" action="/api/action">
             <input type="hidden" name="op" value="project.match" />
             <input type="hidden" name="id" value={project.id} />
+            <input type="hidden" name="scorer" value="generative" />
             <input type="hidden" name="redirect" value={`/projects?project=${project.id}`} />
             <Button type="submit" size="sm">
-              Analyse communities
+              Analyse (generative)
+            </Button>
+          </form>
+          <form method="post" action="/api/action">
+            <input type="hidden" name="op" value="project.match" />
+            <input type="hidden" name="id" value={project.id} />
+            <input type="hidden" name="scorer" value="decision" />
+            <input type="hidden" name="redirect" value={`/projects?project=${project.id}`} />
+            <Button type="submit" variant="secondary" size="sm">
+              Analyse (decision)
             </Button>
           </form>
           {!project.is_default && (
