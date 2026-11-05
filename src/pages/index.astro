@@ -1,6 +1,7 @@
 ---
 import EmptyState from '../components/EmptyState.astro';
 import Badge from '../components/ui/Badge.astro';
+import Button from '../components/ui/Button.astro';
 import Card from '../components/ui/Card.astro';
 import Notice from '../components/ui/Notice.astro';
 import Layout from '../layouts/Layout.astro';
@@ -49,7 +50,16 @@ const share = (count: number, max: number): string =>
       <EmptyState
         title="No data yet"
         hint="Import a conversation or run discovery to populate the inbox."
-      />
+      >
+        <div class="mt-3 flex flex-wrap gap-2">
+          <Button href="/import" variant="secondary" size="sm">
+            Import JSON
+          </Button>
+          <Button href="/apify" variant="ghost" size="sm">
+            Open Apify
+          </Button>
+        </div>
+      </EmptyState>
     )
   }
 
@@ -278,7 +288,16 @@ const share = (count: number, max: number): string =>
           <EmptyState
             title="No opportunities yet"
             hint="Import JSON or run a validated Actor to start."
-          />
+          >
+            <div class="mt-3 flex flex-wrap gap-2">
+              <Button href="/import" variant="secondary" size="sm">
+                Import JSON
+              </Button>
+              <Button href="/apify" variant="ghost" size="sm">
+                Open Apify
+              </Button>
+            </div>
+          </EmptyState>
         ) : (
           <div class="table-wrap">
             <table>
