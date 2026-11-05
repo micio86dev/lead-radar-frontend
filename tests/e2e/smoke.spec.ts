@@ -58,22 +58,46 @@ test('the reply comes right under the original post and copies in one click', as
   expect(await page.evaluate('navigator.clipboard.readText()')).toBe(text);
 });
 
-test('the queue switches between to reply and answered without losing the list', async ({
-  page,
-}) => {
+test('the queue states its views as tabs and each one keeps its own URL', async ({ page }) => {
   await page.goto('/reply-queue');
   const toReply = page.getByRole('link', { name: 'To reply' });
+  const ignored = page.getByRole('link', { name: 'Ignored' });
   const answered = page.getByRole('link', { name: 'Answered' });
   await expect(toReply).toBeVisible();
+  await expect(ignored).toBeVisible();
   await expect(answered).toBeVisible();
   await expect(toReply).toHaveAttribute('aria-current', 'page');
 
-  await answered.click();
-  await expect(page).toHaveURL(/answered=1/);
+  await ignored.click();
+  await expect(page).toHaveURL(/view=ignored/);
+  await expect(page.getByRole('link', { name: 'Ignored' })).toHaveAttribute('aria-current', 'page');
+
+  await page.getByRole('link', { name: 'Answered' }).click();
+  await expect(page).toHaveURL(/view=answered/);
   await expect(page.getByRole('link', { name: 'Answered' })).toHaveAttribute(
     'aria-current',
     'page',
   );
+
+  // The extension's old link still resolves, to the full list.
+  await page.goto('/reply-queue?include_answered=1');
+  await expect(page.getByRole('heading', { name: 'Reply queue', level: 1 })).toBeVisible();
+});
+
+test('a lead can be set aside with a reason and brought back', async ({ page }) => {
+  await page.goto('/reply-queue');
+  const rows = page.getByRole('list', { name: 'Leads in this view' }).getByRole('button');
+  if ((await rows.count()) === 0) test.skip(true, 'no lead in the queue in this environment');
+
+  const skip = page.getByRole('button', { name: /not replying to/i }).first();
+  await expect(skip).toBeVisible();
+  await skip.click();
+
+  // The row leaves the working queue and the message offers the way back.
+  await expect(page.getByRole('status').first()).toContainText(/not replying/i);
+  await expect(page.getByRole('button', { name: 'Undo' })).toBeVisible();
+  await page.getByRole('button', { name: 'Undo' }).click();
+  await expect(page.getByRole('status').first()).toContainText(/back in the queue/i);
 });
 
 test('follow-ups page explains itself and lists waiting threads or an empty state', async ({

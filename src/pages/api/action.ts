@@ -25,6 +25,7 @@ const OPS = new Set([
   'opportunity.generate',
   'opportunity.delete',
   'reply.post',
+  'reply.skip',
   'followup.update',
   'reply.prepare',
   'comment.patch',
@@ -339,6 +340,15 @@ export const POST: APIRoute = async ({ request }) => {
           state: state as 'waiting' | 'answered' | 'closed' | undefined,
         });
         message = `follow-up ${state ?? 'updated'}`;
+        break;
+      }
+      case 'reply.skip': {
+        const skipped = body.flag('skipped');
+        await api.post(
+          `/api/v1/opportunities/${encodeURIComponent(body.text('lead_id') ?? '')}/reply-skip`,
+          { skipped, reason: skipped ? body.text('reason') : undefined },
+        );
+        message = skipped ? 'marked as not replying' : 'back in the queue';
         break;
       }
       case 'reply.prepare': {

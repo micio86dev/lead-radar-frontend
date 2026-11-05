@@ -128,7 +128,7 @@ function when(value: string | null): string {
 .followup-head {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-2) var(--space-3);
+  gap: 0.5rem 0.75rem;
   align-items: baseline;
   justify-content: space-between;
 }
@@ -140,7 +140,7 @@ function when(value: string | null): string {
 }
 
 .followup-head a {
-  color: var(--text);
+  color: var(--color-ink);
   text-decoration: none;
 }
 
@@ -151,22 +151,22 @@ function when(value: string | null): string {
 .chip {
   padding: 1px 8px;
   border-radius: 999px;
-  border: 1px solid var(--border);
-  background: var(--surface-alt);
-  color: var(--text-muted);
+  border: 1px solid var(--color-line);
+  background: var(--color-sunken);
+  color: var(--color-ink-muted);
   font-size: 0.78rem;
   font-weight: 600;
 }
 
 .replies {
-  margin: var(--space-2) 0;
+  margin: 0.5rem 0;
 }
 
 .excerpt {
-  margin: var(--space-2) 0;
-  padding: var(--space-3);
+  margin: 0.5rem 0;
+  padding: 0.75rem;
   border-radius: 8px;
-  background: var(--surface-alt);
+  background: var(--color-sunken);
   max-width: 68ch;
   white-space: pre-wrap;
 }
@@ -177,12 +177,12 @@ function when(value: string | null): string {
   gap: 0.3rem;
   padding: 0.3rem 0.7rem;
   border-radius: 999px;
-  border: 1px solid var(--accent);
-  color: var(--accent);
+  border: 1px solid var(--color-accent);
+  color: var(--color-accent);
   font-weight: 600;
   font-size: 0.88rem;
   text-decoration: none;
-  background: var(--surface);
+  background: var(--color-raised);
 }
 
 .secondary-link {

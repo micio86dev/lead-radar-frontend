@@ -27,6 +27,7 @@ import type {
   ProviderCost,
   ProviderStatus,
   SearchProfile,
+  ReplyConsoleView,
   Settings,
   Source,
 } from '../types';
@@ -140,19 +141,32 @@ export const api = {
   opportunity: (id: string) =>
     request<OpportunityDetail>(`/api/v1/opportunities/${encodeURIComponent(id)}`),
 
-  replyConsole: (limit = 20, includeAnswered = false) =>
+  replyConsole: (limit = 20, view: ReplyConsoleView = 'to_reply') =>
     request<{
       items: {
-        lead: OpportunityListItem & { content_snippet?: string; answered_at?: string | null };
+        lead: OpportunityListItem & {
+          content_snippet?: string;
+          answered_at?: string | null;
+          reply_skipped_at?: string | null;
+          reply_skip_reason?: string | null;
+        };
         comments: CommentSummary[];
       }[];
-      stats: { ready: number; needs_drafts: number; returned: number; answered?: number };
+      view: ReplyConsoleView;
+      stats: {
+        ready: number;
+        needs_drafts: number;
+        returned: number;
+        to_reply: number;
+        answered: number;
+        skipped: number;
+      };
       pacing?: {
         next_reply_at: string | null;
         retry_after_seconds: number;
         source: string | null;
       };
-    }>(`/api/v1/reply-console?limit=${limit}${includeAnswered ? '&include_answered=1' : ''}`),
+    }>(`/api/v1/reply-console?limit=${limit}&view=${view}`),
 
   followups: (state: 'waiting' | 'answered' | 'closed' | 'all' = 'waiting', limit = 20) =>
     request<{

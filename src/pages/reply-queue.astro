@@ -3,31 +3,87 @@ import ReplyConsole from '../components/vue/ReplyConsole.vue';
 import EmptyState from '../components/EmptyState.astro';
 import Layout from '../layouts/Layout.astro';
 import { api } from '../lib/api/client';
-import { load } from '../lib/page';
+import { load, param } from '../lib/page';
+import type { ReplyConsoleView } from '../lib/types';
 
-// `?answered=1` shows the leads already replied to, so the queue itself never re-offers finished work.
-const answeredView = Astro.url.searchParams.get('answered') === '1';
-const { data, error } = await load(() => api.replyConsole(25, answeredView));
-let items = data?.items ?? [];
+/**
+ * One queue, three views. The view lives in the URL so a reload or a shared link lands on the same
+ * list, and `include_answered=1` (the Chrome extension's old link) still resolves to the full list.
+ */
+const requested = param(Astro.url, 'view');
+const includeAnswered = Astro.url.searchParams.has('include_answered');
+const view: ReplyConsoleView = includeAnswered
+  ? 'all'
+  : requested === 'ignored' || requested === 'answered' || requested === 'all'
+    ? requested
+    : 'to_reply';
+
+const { data, error } = await load(() => api.replyConsole(25, view));
+const items = data?.items ?? [];
 let preparing = 0;
 let cooldown = false;
 
-// Keep the queue ready, the way Bazzly does it: when fewer than five leads have drafts, ask the worker
-// for up to three more. The endpoint rate limits automatic preparation, so a refresh cannot queue paid
-// generation repeatedly; the explicit button always works.
-if (!answeredView && data && data.stats.ready < 5 && data.stats.needs_drafts > 0) {
+/**
+ * Keep the working queue ready: when fewer than five leads have drafts, ask the worker for up to three
+ * more. Only on the working view, because preparing drafts for a list you are reading for reference
+ * would spend money on work you did not ask for. The endpoint rate limits automatic runs.
+ */
+if (view === 'to_reply' && data && data.stats.ready < 5 && data.stats.needs_drafts > 0) {
   const prepared = await load(() => api.prepareDrafts(3, true));
   preparing = Number(prepared.data?.queued ?? 0);
   cooldown = Boolean(prepared.data?.cooldown_minutes);
 }
+
+const views = [
+  {
+    id: 'to_reply' as const,
+    label: 'To reply',
+    count: data?.stats.to_reply ?? 0,
+    hint: 'Leads waiting for an answer',
+  },
+  {
+    id: 'ignored' as const,
+    label: 'Ignored',
+    count: data?.stats.skipped ?? 0,
+    hint: 'Leads you decided not to answer',
+  },
+  {
+    id: 'answered' as const,
+    label: 'Answered',
+    count: data?.stats.answered ?? 0,
+    hint: 'Leads whose reply was recorded',
+  },
+];
+const href = (id: ReplyConsoleView): string =>
+  id === 'to_reply' ? '/reply-queue' : `/reply-queue?view=${id}`;
+const empty = {
+  to_reply: {
+    title: 'Nothing to answer right now',
+    hint: 'Leads that pass the qualification gates land here. Import a conversation or run a discovery pass.',
+  },
+  ignored: {
+    title: 'Nothing set aside',
+    hint: 'When a post is not worth an answer, mark it “Not replying” and it moves here with its reason.',
+  },
+  answered: {
+    title: 'No reply recorded yet',
+    hint: 'A lead appears here after you post in the thread and press “I posted it”.',
+  },
+  all: {
+    title: 'The reply queue is empty',
+    hint: 'Import a conversation or run a discovery pass; leads that pass the gates appear here.',
+  },
+}[view];
 ---
 
 <Layout title="Reply queue">
   <div class="page-head">
-    <h1>Reply queue</h1>
-    <p class="muted small">
-      One screen: draft, edit, copy, post on Reddit, record. Nothing is published by this system.
-    </p>
+    <div>
+      <h1>Reply queue</h1>
+      <p class="muted small">
+        Draft, edit, copy, post on Reddit, record. Nothing is published by this system.
+      </p>
+    </div>
   </div>
 
   {
@@ -38,16 +94,21 @@ if (!answeredView && data && data.stats.ready < 5 && data.stats.needs_drafts > 0
     )
   }
 
-  {
-    data && (
-      <p class="muted small">
-        {answeredView
-          ? `${data.stats.returned} already answered · ${data.stats.answered ?? 0} in total`
-          : `${data.stats.ready} ready · ${data.stats.needs_drafts} waiting for drafts · ${data.stats.returned} in this queue`}
-        . Qualified leads come first, then the ones flagged for review.
-      </p>
-    )
-  }
+  <nav class="tabs" aria-label="Queue views">
+    {
+      views.map((tab) => (
+        <a
+          href={href(tab.id)}
+          class:list={['tab', { 'tab--on': view === tab.id }]}
+          aria-current={view === tab.id ? 'page' : undefined}
+          title={tab.hint}
+        >
+          {tab.label}
+          <span class="tab__count">{tab.count}</span>
+        </a>
+      ))
+    }
+  </nav>
 
   {
     preparing > 0 && (
@@ -59,9 +120,9 @@ if (!answeredView && data && data.stats.ready < 5 && data.stats.needs_drafts > 0
   }
 
   {
-    cooldown && preparing === 0 && (
+    cooldown && preparing === 0 && view === 'to_reply' && (
       <p class="muted small">
-        Automatic preparation paused for a few minutes; use “Generate drafts” on a card when you
+        Automatic preparation paused for a few minutes; use “Generate drafts” on a lead when you
         need one now.
       </p>
     )
@@ -69,14 +130,16 @@ if (!answeredView && data && data.stats.ready < 5 && data.stats.needs_drafts > 0
 
   {
     items.length === 0 ? (
-      <EmptyState
-        title="The reply queue is empty"
-        hint="Import a conversation or run a discovery pass; leads that pass the gates appear here."
-      />
+      <EmptyState title={empty.title} hint={empty.hint}>
+        <a href="/import" class="mt-3 inline-block font-semibold text-accent hover:underline">
+          Import conversations
+        </a>
+      </EmptyState>
     ) : (
       <ReplyConsole
         items={items}
-        includeAnswered={answeredView}
+        view={view}
+        stats={data?.stats}
         pacing={data?.pacing}
         client:load
       />

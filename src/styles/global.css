@@ -328,6 +328,34 @@
     @apply my-3 flex flex-wrap items-center gap-2;
   }
 
+  /* --- view tabs -------------------------------------------------------------------------- */
+
+  /* A queue's views are a tab strip, not three sentences: the label carries the state and the count
+     says how much work is behind it. The current tab is the only one with a filled surface. */
+  .tabs {
+    @apply mb-4 inline-flex flex-wrap gap-1 rounded-control border border-line bg-sunken p-1;
+  }
+
+  .tab {
+    @apply inline-flex items-center gap-1.5 rounded-[0.375rem] px-3 py-1.5 text-sm font-semibold text-ink-muted no-underline hover:text-ink;
+  }
+
+  .tab--on {
+    @apply bg-raised text-ink shadow-panel;
+  }
+
+  .tab__count {
+    @apply rounded-full bg-sunken px-1.5 text-[0.72rem] font-semibold tabular-nums text-ink-muted;
+  }
+
+  .tab--on .tab__count {
+    @apply bg-accent-soft text-accent-strong;
+  }
+
+  kbd {
+    @apply rounded border border-line bg-raised px-1 py-0.5 font-mono text-[0.7rem] leading-none text-ink-muted;
+  }
+
   .page-foot {
     @apply mt-8 text-xs text-ink-muted;
   }

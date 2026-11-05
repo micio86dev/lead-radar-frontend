@@ -418,3 +418,9 @@ export interface ProjectAnalysis {
   pages: { url: string; read: boolean; error: string | null }[];
   communities: ProjectCommunityMatch[];
 }
+
+/**
+ * Reply queue views. Disjoint on purpose: a lead whose reply was recorded is answered, a lead the
+ * operator set aside is ignored, and neither can appear in the working queue.
+ */
+export type ReplyConsoleView = 'to_reply' | 'ignored' | 'answered' | 'all';
