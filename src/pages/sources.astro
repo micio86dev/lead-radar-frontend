@@ -68,6 +68,7 @@ const { data, error } = await load(() => api.sources());
               <th scope="col">Validation</th>
               <th scope="col">Enabled</th>
               <th scope="col">Last run</th>
+              <th scope="col">Notes</th>
               <th scope="col">Actions</th>
             </tr>
           </thead>
@@ -99,6 +100,12 @@ const { data, error } = await load(() => api.sources());
                       />
                       <label for={`enabled-${source.id}`}>Enabled</label>
                     </div>
+                    {source.validation_status !== 'validated' &&
+                      source.provider !== 'manual_import' && (
+                        <p class="muted small">
+                          Record validation before enabling: without it the API refuses the change.
+                        </p>
+                      )}
                     <p>
                       <button type="submit" class="secondary">
                         Save
@@ -112,6 +119,25 @@ const { data, error } = await load(() => api.sources());
                     <button type="submit" class="secondary">
                       Test connection
                     </button>
+                  </form>
+                  <form method="post" action="/api/action">
+                    <input type="hidden" name="op" value="source.validate" />
+                    <input type="hidden" name="id" value={source.id} />
+                    <input type="hidden" name="redirect" value={target} />
+                    <label for={`evidence-${source.id}`}>Validation evidence</label>
+                    <input
+                      id={`evidence-${source.id}`}
+                      name="evidence"
+                      placeholder="what was verified and where"
+                    />
+                    <label for={`outcome-${source.id}`}>Outcome</label>
+                    <select id={`outcome-${source.id}`} name="outcome">
+                      <option value="validated">validated</option>
+                      <option value="rejected">rejected</option>
+                    </select>
+                    <p>
+                      <button type="submit">Record validation</button>
+                    </p>
                   </form>
                 </td>
               </tr>
